@@ -19,7 +19,7 @@ jobs:
       - name: Install, build, and upload your site
         uses: withastro/action@v3
         with:
-          node-version: 22
+          node-version: 24.18.0
 
   deploy:
     needs: build
@@ -31,4 +31,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        

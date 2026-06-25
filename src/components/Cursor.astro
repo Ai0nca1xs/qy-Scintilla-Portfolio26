@@ -1,0 +1,50 @@
+---
+---
+<div class="cursor"></div>
+
+<style>
+  .cursor {
+    width: 10px;
+    height: 10px;
+    background-color: black;
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none; /* 讓游標穿透元素，不影響點擊 */
+    z-index: 9999;
+    /* 這裡使用混合模式來達成你的「反轉色」需求 */
+    mix-blend-mode: difference; 
+    transition: transform 0.1s ease, background-color 0.2s ease;
+  }
+
+  {
+  /* 初始顯示 */
+    opacity: 1; 
+    display: block;
+  }
+
+  /* 點擊時的紅色狀態 */
+  .cursor.active {
+    background-color: red;
+    transform: scale(1.5);
+  }
+</style>
+
+<script>
+  const cursor = document.querySelector('.cursor');
+
+  // 確保 cursor 存在才執行
+  if (cursor instanceof HTMLElement) {
+    document.addEventListener('mousemove', (e) => {
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top = e.clientY + 'px';
+    });
+
+    document.addEventListener('mousedown', () => {
+      cursor.classList.add('active');
+    });
+
+    document.addEventListener('mouseup', () => {
+      cursor.classList.remove('active');
+    });
+  }
+</script>
