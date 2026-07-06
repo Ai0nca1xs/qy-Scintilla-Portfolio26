@@ -28,6 +28,8 @@ const projects = defineCollection({
 			featured: z.boolean().default(false),
 			order: z.number().default(99),
 			cover: image().optional(),
+			// 可選：覆蓋檔案庫大圖板的底色（預設用分類色），如 KÉNOSE 用墨黑
+			tone: z.string().optional(),
 		}),
 });
 

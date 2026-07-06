@@ -12,25 +12,27 @@
   --color-line: rgba(26, 26, 26, 0.12); /* 髮絲線 */
   --color-copper: #b87333; /* 氧化銅褐：hover「升溫」的目標色 */
 
-  /* 煆燒金屬漸層：模擬鉍晶體與火焰光譜 */
-  --calx-gradient: radial-gradient(
-    circle,
-    #ff007f 0%,
-    #ff7700 35%,
-    #ff6f00 50%,
-    #ffd500 60%,
-    #1a1a1a 80%
-  );
-  --calx-linear: linear-gradient(90deg, #ffd500, #ff7700, #ff007f, #1a1a1a);
-  --calx-vertical: linear-gradient(180deg, #ffd500, #ff7700, #ff007f);
+  /* 純色點綴系統（取自 Portfolio 2025 PDF 的版式用色，全站禁用漸變）*/
+  --color-magenta: #e4007c; /* 目錄頁縮略圖色條 / 參考文獻頁底色 */
+  --color-orange: #ff5c00; /* 十月一日海報 */
+  --color-blue: #1f3cff; /* CV 頁的電光藍 */
+  --color-yellow: #ffd500; /* CV 頁的亮黃 */
+  --color-slate: #5b6b7f; /* Spectre 頁的青灰藍 */
+
+  /* 分類色：每個分類一個純色 */
+  --cat-gra: var(--color-orange);
+  --cat-sce: var(--color-magenta);
+  --cat-ins: var(--color-blue);
+  --cat-prd: var(--color-yellow);
+  --cat-pho: var(--color-slate);
 
   /* 空間與尺寸 */
   --space-sm: 0.5rem;
   --space-md: 1.5rem;
   --space-lg: 3rem;
   --space-xl: clamp(4.5rem, 12vh, 8rem);
-  --container-max-width: 1240px;
-  --gutter: clamp(16px, 3vw, 36px);
+  --container-max-width: 1400px;
+  --gutter: clamp(8px, 1vw, 12px); /* 窄邊距：貼近海報式的滿版感 */
 
   /* 字體 */
   --font-primary: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -163,12 +165,9 @@ b {
   margin: var(--space-lg) 0;
 }
 
-/* 煆燒金屬漸層標題 */
+/* 標題基調：純色墨黑（原煆燒漸層已按純色原則退役，類名保留兼容） */
 .title-calx {
-  background: var(--calx-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--color-ink);
   display: inline-block;
 }
 

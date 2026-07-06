@@ -15,6 +15,7 @@ medium: Construction d'univers — textes, croquis, scénographie
 status: in-progress
 featured: true
 order: 6
+tone: '#1a1a1a'
 ---
 
 Ce projet en cours (Kénose / Kenosis) sera l'axe central de mon année de

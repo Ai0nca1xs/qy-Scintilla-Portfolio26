@@ -119,16 +119,12 @@ const t = useTranslations(lang);
 		transform: scale(0.95);
 	}
 
-	/* 觸發條件 B：被直接懸停的連結解除限制並套用煆燒漸層 */
+	/* 觸發條件 B：被直接懸停的連結解除限制，點亮為洋紅 */
 	.nav-links a:hover {
 		filter: blur(0);
 		opacity: 1;
 		transform: scale(1.12);
-
-		background: var(--calx-gradient);
-		-webkit-background-clip: text;
-		background-clip: text;
-		color: transparent;
+		color: var(--color-magenta);
 	}
 
 	/* 手機端：站名縮短空間，導覽保持可點 */

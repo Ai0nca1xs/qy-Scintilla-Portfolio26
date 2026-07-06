@@ -1,6 +1,8 @@
 ---
-// 「標本卡」：檔案庫網格中的單件作品卡片
+// 「標本板」：檔案庫中的大畫幅作品板（Mejias 式四角信息佈局）。
+// 封面圖（cover）就位前以純色分類色作底；就位後圖片鋪滿、信息疊於其上。
 import type { CollectionEntry } from 'astro:content';
+import { Image } from 'astro:assets';
 import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -16,83 +18,175 @@ const d = entry.data;
 
 <a
 	href={localizePath(lang, `/project/${slug}`)}
-	class="specimen-card"
+	class:list={['specimen-plate', { 'has-cover': !!d.cover }]}
 	data-category={d.category}
 	data-cursor-label="VIEW"
+	style={d.tone ? `--plate: ${d.tone}; --plate-ink: #f8f9fa;` : undefined}
 >
-	<span class="temper-bar" aria-hidden="true"></span>
-	<span class="metadata card-meta">
-		{d.code} · {d.year}
-		{d.status === 'in-progress' && <em class="status-badge">{t.project.statusInProgress}</em>}
+	{d.cover && <Image src={d.cover} alt={d.title} class="plate-cover" width={1600} />}
+
+	<h2 class="plate-title">{d.title}</h2>
+	<span class="metadata plate-year">{d.year}</span>
+	<p class="plate-summary">{d.summary}</p>
+	<span class="plate-tags">
+		{d.status === 'in-progress' && <em class="tag tag-status">{t.project.statusInProgress}</em>}
+		{d.tags.map((tag) => <span class="tag">{tag}</span>)}
 	</span>
-	<h2 class="card-title">{d.title}</h2>
-	<p class="card-summary">{d.summary}</p>
-	<span class="metadata card-tags">{d.tags.map((tag) => `[${tag}]`).join(' ')}</span>
 </a>
 
 <style>
-	.specimen-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.6rem;
-		padding: 1.4rem 1.4rem 1.6rem;
-		border: 1px solid var(--color-line);
-		background: rgba(255, 255, 255, 0.4);
-		transition:
-			border-color 0.4s var(--ease-oxide),
-			transform 0.4s var(--ease-oxide);
+	/* 四角網格：左上標題 / 右上年份 / 左下簡介 / 右下標籤，中列自動撐開 */
+	.specimen-plate {
+		--pad: clamp(1rem, 2.5vw, 2.2rem);
+		position: relative;
+		display: grid;
+		grid-template:
+			'title year' auto
+			'mid mid' 1fr
+			'summary tags' auto
+			/ minmax(0, 1fr) auto;
+		gap: 1.2rem;
+		aspect-ratio: 16 / 9;
+		min-height: 400px;
+		padding: var(--pad);
+		background: var(--plate);
+		color: var(--plate-ink, #f8f9fa);
+		overflow: hidden;
 	}
 
-	/* 頂部「淬鍊光譜」色條：hover 時緩慢升溫（0.4s，呼應氧化概念） */
-	.temper-bar {
-		display: block;
-		height: 2px;
-		width: 40%;
-		background: var(--calx-linear);
-		opacity: 0.55;
-		transition:
-			width 0.4s var(--ease-oxide),
-			opacity 0.4s var(--ease-oxide);
+	/* 分類 → 純色底（可被 frontmatter 的 tone 覆蓋） */
+	.specimen-plate[data-category='GRA'] {
+		--plate: var(--cat-gra);
+	}
+	.specimen-plate[data-category='SCE'] {
+		--plate: var(--cat-sce);
+	}
+	.specimen-plate[data-category='INS'] {
+		--plate: var(--cat-ins);
+	}
+	.specimen-plate[data-category='PRD'] {
+		--plate: var(--cat-prd);
+		--plate-ink: #1a1a1a;
+	}
+	.specimen-plate[data-category='PHO'] {
+		--plate: var(--cat-pho);
 	}
 
-	.specimen-card:hover {
-		border-color: rgba(184, 115, 51, 0.5); /* 銅褐：金屬接觸空氣的氧化色 */
-		opacity: 1; /* 覆蓋全域 a:hover 的透明度 */
-	}
-
-	.specimen-card:hover .temper-bar {
+	.plate-cover {
+		position: absolute;
+		inset: 0;
 		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		z-index: 0;
+		transition: transform 0.8s var(--ease-oxide);
+	}
+
+	.specimen-plate:hover {
 		opacity: 1;
 	}
 
-	.card-meta {
-		display: flex;
-		align-items: baseline;
-		gap: 0.6rem;
+	.specimen-plate:hover .plate-cover {
+		transform: scale(1.02);
 	}
 
-	.status-badge {
-		font-style: normal;
-		padding: 0 0.4rem;
-		border: 1px solid rgba(26, 26, 26, 0.25);
+	.plate-title,
+	.plate-year,
+	.plate-summary,
+	.plate-tags {
+		position: relative;
+		z-index: 1;
 	}
 
-	.card-title {
-		font-size: 20px;
-		font-weight: 500;
+	/* 有封面圖時給文字一點投影保證可讀 */
+	.has-cover .plate-title,
+	.has-cover .plate-summary {
+		color: #f8f9fa;
+		text-shadow: 0 1px 12px rgba(26, 26, 26, 0.45);
+	}
+
+	.plate-title {
+		grid-area: title;
+		font-size: clamp(1.6rem, 3.4vw, 2.8rem);
+		font-weight: 600;
 		letter-spacing: -0.01em;
+		line-height: 1.05;
 		margin: 0;
+		transition: transform 0.5s var(--ease-oxide);
 	}
 
-	.card-summary {
-		font-size: 13px;
-		line-height: 1.65;
-		color: var(--color-ink-soft);
-		margin: 0;
-		flex-grow: 1;
+	.specimen-plate:hover .plate-title {
+		transform: translateX(0.5rem);
 	}
 
-	.card-tags {
-		margin-top: 0.4rem;
+	.plate-year {
+		grid-area: year;
+		justify-self: end;
+		color: inherit;
+		opacity: 0.85;
+	}
+
+	.plate-summary {
+		grid-area: summary;
+		align-self: end;
+		max-width: min(52ch, 90%);
+		font-size: 13.5px;
+		line-height: 1.6;
+		margin: 0;
+		opacity: 0.92;
+	}
+
+	.plate-tags {
+		grid-area: tags;
+		justify-self: end;
+		align-self: end;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 0.4rem;
+	}
+
+	/* 純白標籤片：強對比、實驗室標籤氣質 */
+	.tag {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		padding: 4px 9px;
+		background: #f8f9fa;
+		color: #1a1a1a;
+		white-space: nowrap;
+	}
+
+	/* 進行中徽章：洋紅高亮 */
+	.tag-status {
+		font-style: normal;
+		background: var(--color-magenta);
+		color: #f8f9fa;
+	}
+
+	@media (max-width: 768px) {
+		.specimen-plate {
+			aspect-ratio: auto;
+			min-height: 380px;
+			grid-template:
+				'title' auto
+				'year' auto
+				'mid' 1fr
+				'summary' auto
+				'tags' auto
+				/ minmax(0, 1fr);
+		}
+
+		.plate-year,
+		.plate-tags {
+			justify-self: start;
+		}
+
+		.plate-tags {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: flex-start;
+		}
 	}
 </style>

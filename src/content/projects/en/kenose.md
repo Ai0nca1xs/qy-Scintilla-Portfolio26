@@ -15,6 +15,7 @@ medium: Worldbuilding — texts, sketches, scenography
 status: in-progress
 featured: true
 order: 6
+tone: '#1a1a1a'
 ---
 
 This ongoing project (Kénose / Kenosis) will be the central axis of my diploma

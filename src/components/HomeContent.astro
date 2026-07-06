@@ -31,7 +31,7 @@ const year = new Date().getFullYear();
 	</div>
 
 	<div class="hero-core">
-		<h1 class="hero-title title-calx">SCINTILLA</h1>
+		<h1 class="hero-title title-calx">SCINTILLA<span class="hero-dot">.</span></h1>
 		<div class="metadata hero-meta">{t.home.heroMeta}</div>
 	</div>
 
@@ -81,7 +81,10 @@ const year = new Date().getFullYear();
 						data-cursor-label="VIEW"
 					>
 						<span class="metadata index-num">{String(i + 1).padStart(2, '0')}</span>
-						<span class="index-title">{entry.data.title}</span>
+						<span class="index-title">
+							<span class="index-swatch" data-cat={entry.data.category} aria-hidden="true"></span>
+							{entry.data.title}
+						</span>
 						<span class="metadata index-code">
 							{entry.data.code} · {entry.data.year}
 						</span>
@@ -180,6 +183,10 @@ const year = new Date().getFullYear();
 		margin: 0 0 1.2rem;
 		/* 濾鏡由 JS 在互動時動態掛載，平時保持零渲染負擔 */
 		transition: transform 0.3s var(--ease-oxide);
+	}
+
+	.hero-dot {
+		color: var(--color-magenta);
 	}
 
 	.hero-meta {
@@ -316,13 +323,38 @@ const year = new Date().getFullYear();
 	}
 
 	.index-title {
+		display: flex;
+		align-items: center;
+		gap: 0.9rem;
 		font-size: clamp(1.3rem, 3.2vw, 2rem);
 		font-weight: 400;
 		letter-spacing: -0.01em;
 		transition: transform 0.5s var(--ease-oxide);
 	}
 
-	/* 底部光譜細線：hover 時從左向右「淬鍊」展開 */
+	/* 分類色籤：每行作品前的小純色方塊 */
+	.index-swatch {
+		flex-shrink: 0;
+		width: 11px;
+		height: 11px;
+	}
+	.index-swatch[data-cat='GRA'] {
+		background: var(--cat-gra);
+	}
+	.index-swatch[data-cat='SCE'] {
+		background: var(--cat-sce);
+	}
+	.index-swatch[data-cat='INS'] {
+		background: var(--cat-ins);
+	}
+	.index-swatch[data-cat='PRD'] {
+		background: var(--cat-prd);
+	}
+	.index-swatch[data-cat='PHO'] {
+		background: var(--cat-pho);
+	}
+
+	/* 底部洋紅細線：hover 時從左向右展開 */
 	.index-row::after {
 		content: '';
 		position: absolute;
@@ -330,7 +362,7 @@ const year = new Date().getFullYear();
 		bottom: -1px;
 		height: 1px;
 		width: 0%;
-		background: var(--calx-linear);
+		background: var(--color-magenta);
 		transition: width 0.6s var(--ease-oxide);
 	}
 
@@ -402,23 +434,22 @@ const year = new Date().getFullYear();
 		opacity: 1;
 	}
 
-	/* 每個分類一段光譜（真實封面圖就位前的「標本片」底色） */
+	/* 每個分類一個純色（真實封面圖就位前的「標本片」底色） */
 	.preview-plate[data-cat='GRA'] {
-		background: linear-gradient(135deg, #ffd500, #ff7700);
-		color: #1a1a1a;
+		background: var(--cat-gra);
 	}
 	.preview-plate[data-cat='SCE'] {
-		background: linear-gradient(135deg, #ff7700, #ff007f);
+		background: var(--cat-sce);
 	}
 	.preview-plate[data-cat='INS'] {
-		background: linear-gradient(135deg, #ff007f, #1a1a1a);
+		background: var(--cat-ins);
 	}
 	.preview-plate[data-cat='PRD'] {
-		background: linear-gradient(135deg, #ffd500, #ff007f);
+		background: var(--cat-prd);
 		color: #1a1a1a;
 	}
 	.preview-plate[data-cat='PHO'] {
-		background: linear-gradient(135deg, #9aa2ab, #1a1a1a);
+		background: var(--cat-pho);
 	}
 
 	.plate-code {
@@ -436,12 +467,15 @@ const year = new Date().getFullYear();
 		font-size: clamp(1.5rem, 4.5vw, 2.8rem);
 		font-weight: 600;
 		letter-spacing: 0.01em;
-		transition: letter-spacing 0.6s var(--ease-oxide);
+		transition:
+			letter-spacing 0.6s var(--ease-oxide),
+			color 0.4s var(--ease-oxide);
 	}
 
 	.gallery-cta:hover {
 		opacity: 1;
 		letter-spacing: 0.05em;
+		color: var(--color-magenta);
 	}
 
 	/* --- 響應式 --- */

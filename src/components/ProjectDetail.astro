@@ -1,7 +1,8 @@
 ---
-// 作品詳情頁主體：規格表（metadata）+ 完整敘述，EN / FR 共用
+// 作品詳情頁主體：封面 + 規格表（metadata）+ 完整敘述，EN / FR 共用
 import type { CollectionEntry } from 'astro:content';
 import { render } from 'astro:content';
+import { Image } from 'astro:assets';
 import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -24,7 +25,10 @@ const { Content } = await render(entry);
 			{d.status === 'in-progress' && ` · ${t.project.statusInProgress}`}
 		</p>
 		<h1 class="title-calx detail-title">{d.title}</h1>
+		<span class="detail-swatch" data-cat={d.category} aria-hidden="true"></span>
 	</header>
+
+	{d.cover && <Image src={d.cover} alt={d.title} class="detail-cover" width={1800} />}
 
 	<dl class="spec-sheet metadata">
 		{d.medium && <dt>MEDIUM</dt>}
@@ -36,7 +40,9 @@ const { Content } = await render(entry);
 		{d.exhibitions && <dt>EXHIBITIONS</dt>}
 		{d.exhibitions && <dd>{d.exhibitions.map((e) => <span class="exhibition">{e}</span>)}</dd>}
 		<dt>KEYWORDS</dt>
-		<dd>{d.tags.join(' · ')}</dd>
+		<dd class="tag-chips">
+			{d.tags.map((tag) => <span class="detail-tag" data-cat={d.category}>{tag}</span>)}
+		</dd>
 	</dl>
 
 	<div class="prose">
@@ -63,8 +69,65 @@ const { Content } = await render(entry);
 	}
 
 	.detail-title {
-		font-size: 32px;
+		font-size: clamp(2rem, 5vw, 3rem);
 		font-weight: 600;
+	}
+
+	/* 分類色籤：標題下方的一段純色 */
+	.detail-swatch {
+		display: block;
+		width: 56px;
+		height: 6px;
+		margin-top: 1rem;
+	}
+	.detail-swatch[data-cat='GRA'] {
+		background: var(--cat-gra);
+	}
+	.detail-swatch[data-cat='SCE'] {
+		background: var(--cat-sce);
+	}
+	.detail-swatch[data-cat='INS'] {
+		background: var(--cat-ins);
+	}
+	.detail-swatch[data-cat='PRD'] {
+		background: var(--cat-prd);
+	}
+	.detail-swatch[data-cat='PHO'] {
+		background: var(--cat-pho);
+	}
+
+	/* 關鍵詞：分類色實底標籤片 */
+	.tag-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+
+	.detail-tag {
+		padding: 4px 9px;
+		color: #f8f9fa;
+	}
+	.detail-tag[data-cat='GRA'] {
+		background: var(--cat-gra);
+	}
+	.detail-tag[data-cat='SCE'] {
+		background: var(--cat-sce);
+	}
+	.detail-tag[data-cat='INS'] {
+		background: var(--cat-ins);
+	}
+	.detail-tag[data-cat='PRD'] {
+		background: var(--cat-prd);
+		color: #1a1a1a;
+	}
+	.detail-tag[data-cat='PHO'] {
+		background: var(--cat-pho);
+	}
+
+	.detail-cover {
+		width: 100%;
+		height: auto;
+		margin-bottom: var(--space-lg);
 	}
 
 	/* 標本規格表：等寬字體的客觀紀錄 */
