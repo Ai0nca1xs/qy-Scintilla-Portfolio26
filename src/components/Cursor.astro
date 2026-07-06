@@ -2,6 +2,7 @@
 ---
 {/* transition:persist 讓游標元素在頁面轉場時保留同一個 DOM 節點，事件監聽不會失效 */}
 <div class="cursor" transition:persist="cursor" aria-hidden="true"></div>
+<span class="cursor-label metadata" transition:persist="cursor-label" aria-hidden="true"></span>
 
 <style is:global>
 	/* 只在 JS 確認啟用自訂游標後才隱藏系統游標，腳本失效時仍有游標可用 */
@@ -28,12 +29,29 @@
 		transition: opacity 0.3s ease;
 		will-change: transform;
 	}
+
+	/* 游標旁的標本標籤：懸停在作品上時顯示動作提示（如 VIEW） */
+	.cursor-label {
+		position: fixed;
+		left: 0;
+		top: 0;
+		z-index: 9998;
+		pointer-events: none;
+		padding: 3px 8px;
+		background: rgba(248, 249, 250, 0.88);
+		border: 1px solid var(--color-line);
+		color: var(--color-ink);
+		opacity: 0;
+		transition: opacity 0.25s ease;
+		will-change: transform;
+	}
 </style>
 
 <script>
 	// 效能要點：位置與縮放全部走 transform（合成器處理，不觸發重排），
 	// 並用 rAF + 線性插值做柔性跟隨；游標靜止後自動停掉動畫循環。
 	const cursor = document.querySelector('.cursor');
+	const label = document.querySelector('.cursor-label');
 
 	if (cursor instanceof HTMLElement && window.matchMedia('(pointer: fine)').matches) {
 		let x = -100;
@@ -52,6 +70,9 @@
 			y += (targetY - y) * 0.25;
 			scale += (targetScale - scale) * 0.18;
 			cursor.style.transform = `translate3d(${x - 5}px, ${y - 5}px, 0) scale(${scale.toFixed(3)})`;
+			if (label instanceof HTMLElement) {
+				label.style.transform = `translate3d(${x + 18}px, ${y + 18}px, 0)`;
+			}
 
 			const settled =
 				Math.abs(targetX - x) < 0.1 &&
@@ -97,10 +118,22 @@
 			updateScale();
 		});
 
-		// 懸停在可點擊元素上時游標放大，作為統一的互動回饋
+		// 懸停在可點擊元素上時游標放大，作為統一的互動回饋；
+		// 帶 data-cursor-label 的元素會在游標旁顯示動作標籤（如 VIEW）
 		document.addEventListener('mouseover', (e) => {
-			hoveringLink = e.target instanceof Element && !!e.target.closest('a, button');
+			const el = e.target instanceof Element ? e.target : null;
+			hoveringLink = !!el?.closest('a, button');
 			updateScale();
+
+			if (label instanceof HTMLElement) {
+				const tagged = el?.closest('[data-cursor-label]');
+				if (tagged) {
+					label.textContent = tagged.getAttribute('data-cursor-label');
+					label.style.opacity = '1';
+				} else {
+					label.style.opacity = '0';
+				}
+			}
 		});
 	}
 </script>

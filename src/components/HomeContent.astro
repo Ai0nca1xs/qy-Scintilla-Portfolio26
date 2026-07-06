@@ -30,8 +30,10 @@ const year = new Date().getFullYear();
 		<span class="metadata corner br">CAL. {year}</span>
 	</div>
 
-	<h1 class="hero-title title-calx">SCINTILLA</h1>
-	<div class="metadata hero-meta">{t.home.heroMeta}</div>
+	<div class="hero-core">
+		<h1 class="hero-title title-calx">SCINTILLA</h1>
+		<div class="metadata hero-meta">{t.home.heroMeta}</div>
+	</div>
 
 	<div class="metadata scroll-hint">SCROLL TO DEVELOP ↓</div>
 </section>
@@ -75,6 +77,8 @@ const year = new Date().getFullYear();
 					<a
 						href={localizePath(lang, `/project/${entry.id.replace(/^(en|fr)\//, '')}`)}
 						class="index-row"
+						data-slug={entry.id.replace(/^(en|fr)\//, '')}
+						data-cursor-label="VIEW"
 					>
 						<span class="metadata index-num">{String(i + 1).padStart(2, '0')}</span>
 						<span class="index-title">{entry.data.title}</span>
@@ -86,6 +90,23 @@ const year = new Date().getFullYear();
 			))
 		}
 	</ol>
+
+	{/* 懸停預覽浮窗：游標移到作品名上時浮出對應的「光譜標本片」，
+	    待作品封面圖（cover 字段）就位後即替換為真實縮略圖 */}
+	<div class="index-preview" aria-hidden="true">
+		{
+			featured.map((entry) => (
+				<figure
+					class="preview-plate"
+					data-plate={entry.id.replace(/^(en|fr)\//, '')}
+					data-cat={entry.data.category}
+				>
+					<span class="metadata plate-code">{entry.data.code}</span>
+					<span class="plate-title">{entry.data.title}</span>
+				</figure>
+			))
+		}
+	</div>
 	<a class="metadata archive-link" href={localizePath(lang, '/project')}>
 		FULL ARCHIVE ({String(totalCount).padStart(2, '0')}) →
 	</a>
@@ -198,7 +219,8 @@ const year = new Date().getFullYear();
 	}
 
 	.concept-intro p {
-		font-size: 15px;
+		font-size: 16px;
+		line-height: 1.7;
 		color: var(--color-ink-soft);
 	}
 
@@ -215,8 +237,8 @@ const year = new Date().getFullYear();
 	}
 
 	.lead-text {
-		font-size: clamp(1.25rem, 2.6vw, 1.9rem);
-		line-height: 1.4;
+		font-size: clamp(1.4rem, 2.8vw, 2.1rem);
+		line-height: 1.45;
 		letter-spacing: -0.01em;
 		font-weight: 300;
 		margin: 0;
@@ -248,7 +270,7 @@ const year = new Date().getFullYear();
 		padding: 1.1rem 0;
 		margin: 0;
 		border-top: 1px solid var(--color-line);
-		font-size: 15px;
+		font-size: 16px;
 		transition:
 			color 0.4s var(--ease-oxide),
 			padding-left 0.4s var(--ease-oxide);
@@ -340,8 +362,74 @@ const year = new Date().getFullYear();
 	}
 
 	.gallery-text {
+		font-size: 15px;
 		color: var(--color-ink-soft);
 		margin-bottom: 1.2rem;
+	}
+
+	/* --- 懸停預覽浮窗（光譜標本片）--- */
+	.index-preview {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: clamp(220px, 24vw, 320px);
+		aspect-ratio: 4 / 3;
+		z-index: 9500;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.35s var(--ease-develop);
+		will-change: transform;
+	}
+
+	.index-preview.visible {
+		opacity: 1;
+	}
+
+	.preview-plate {
+		position: absolute;
+		inset: 0;
+		margin: 0;
+		padding: 1rem 1.1rem;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		opacity: 0;
+		transition: opacity 0.3s ease;
+		color: rgba(255, 255, 255, 0.94);
+	}
+
+	.preview-plate.active {
+		opacity: 1;
+	}
+
+	/* 每個分類一段光譜（真實封面圖就位前的「標本片」底色） */
+	.preview-plate[data-cat='GRA'] {
+		background: linear-gradient(135deg, #ffd500, #ff7700);
+		color: #1a1a1a;
+	}
+	.preview-plate[data-cat='SCE'] {
+		background: linear-gradient(135deg, #ff7700, #ff007f);
+	}
+	.preview-plate[data-cat='INS'] {
+		background: linear-gradient(135deg, #ff007f, #1a1a1a);
+	}
+	.preview-plate[data-cat='PRD'] {
+		background: linear-gradient(135deg, #ffd500, #ff007f);
+		color: #1a1a1a;
+	}
+	.preview-plate[data-cat='PHO'] {
+		background: linear-gradient(135deg, #9aa2ab, #1a1a1a);
+	}
+
+	.plate-code {
+		opacity: 0.8;
+		color: inherit;
+	}
+
+	.plate-title {
+		font-size: 14px;
+		font-weight: 500;
+		letter-spacing: 0.01em;
 	}
 
 	.gallery-cta {
@@ -435,7 +523,101 @@ const year = new Date().getFullYear();
 		});
 	}
 
-	document.addEventListener('astro:page-load', initHeroLiquid);
+	// --- 懸停預覽浮窗：柔性跟隨游標，切換對應的標本片 ---
+	let previewRafId = 0;
+
+	function initIndexPreview() {
+		if (!window.matchMedia('(pointer: fine)').matches) return;
+		const wrap = document.querySelector('.index-preview');
+		const list = document.querySelector('.project-index');
+		if (!(wrap instanceof HTMLElement) || !list) return;
+
+		const plates = wrap.querySelectorAll('.preview-plate');
+		let x = 0;
+		let y = 0;
+		let targetX = 0;
+		let targetY = 0;
+		let shown = false;
+
+		const loop = () => {
+			x += (targetX - x) * 0.14;
+			y += (targetY - y) * 0.14;
+			wrap.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+			const settled = Math.abs(targetX - x) < 0.3 && Math.abs(targetY - y) < 0.3;
+			previewRafId = settled ? 0 : requestAnimationFrame(loop);
+		};
+
+		const wake = () => {
+			if (!previewRafId) previewRafId = requestAnimationFrame(loop);
+		};
+
+		list.addEventListener(
+			'pointermove',
+			(e) => {
+				// 浮窗停靠在游標右上方，避免遮住正在讀的標題
+				targetX = e.clientX + 32;
+				targetY = e.clientY - wrap.offsetHeight - 24;
+				wake();
+			},
+			{ passive: true }
+		);
+
+		list.addEventListener('pointerover', (e) => {
+			const row = e.target instanceof Element ? e.target.closest('.index-row') : null;
+			if (!row) return;
+			const slug = row.getAttribute('data-slug');
+			plates.forEach((p) => p.classList.toggle('active', p.getAttribute('data-plate') === slug));
+			if (!shown) {
+				shown = true;
+				x = targetX; // 首次出現直接落位，不做長距離飛行
+				y = targetY;
+			}
+			wrap.classList.add('visible');
+		});
+
+		list.addEventListener('pointerleave', () => {
+			wrap.classList.remove('visible');
+			shown = false;
+		});
+	}
+
+	// --- hero 滾動視差：核心層以較慢速率下沉並淡出，取景框保持不動 ---
+	let parallaxRafId = 0;
+
+	function initHeroParallax() {
+		const core = document.querySelector('.hero-core');
+		if (!(core instanceof HTMLElement)) return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+		const update = () => {
+			parallaxRafId = 0;
+			const scrolled = window.scrollY;
+			const vh = window.innerHeight;
+			if (scrolled > vh) return; // 離開首屏後不再計算
+			const progress = scrolled / vh;
+			core.style.transform = `translateY(${(scrolled * 0.28).toFixed(1)}px)`;
+			core.style.opacity = Math.max(0, 1 - progress * 1.15).toFixed(3);
+		};
+
+		window.addEventListener(
+			'scroll',
+			() => {
+				if (!parallaxRafId) parallaxRafId = requestAnimationFrame(update);
+			},
+			{ passive: true }
+		);
+	}
+
+	document.addEventListener('astro:page-load', () => {
+		initHeroLiquid();
+		initIndexPreview();
+		initHeroParallax();
+	});
+
 	// 換頁前停掉動畫循環，避免殘留的 rAF 引用舊頁面的元素
-	document.addEventListener('astro:before-swap', () => cancelAnimationFrame(animationFrameId));
+	document.addEventListener('astro:before-swap', () => {
+		cancelAnimationFrame(animationFrameId);
+		cancelAnimationFrame(previewRafId);
+		cancelAnimationFrame(parallaxRafId);
+	});
 </script>

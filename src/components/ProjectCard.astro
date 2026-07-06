@@ -18,6 +18,7 @@ const d = entry.data;
 	href={localizePath(lang, `/project/${slug}`)}
 	class="specimen-card"
 	data-category={d.category}
+	data-cursor-label="VIEW"
 >
 	<span class="temper-bar" aria-hidden="true"></span>
 	<span class="metadata card-meta">
@@ -84,8 +85,8 @@ const d = entry.data;
 	}
 
 	.card-summary {
-		font-size: 12.5px;
-		line-height: 1.6;
+		font-size: 13px;
+		line-height: 1.65;
 		color: var(--color-ink-soft);
 		margin: 0;
 		flex-grow: 1;
