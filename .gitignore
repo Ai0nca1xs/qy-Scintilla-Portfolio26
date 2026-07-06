@@ -26,3 +26,10 @@ pnpm-debug.log*
 # Claude Code local tooling
 .claude/
 src/.claude/
+
+# 私密内容：规划文档与媒体源文件（网站展示用的优化版媒体放 src/assets/，会公开）
+docs/
+_originals/
+*.psd
+*.ai
+*.indd
