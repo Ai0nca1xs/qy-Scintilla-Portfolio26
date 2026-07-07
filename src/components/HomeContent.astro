@@ -3,7 +3,7 @@
 // 結構：Hero → 01 Profile（含簡版 CV）→ 02 Practice（三列：定位/領域/細分與作品）→ 03 Gallery
 import { getCollection } from 'astro:content';
 import SplashIntro from '@/components/SplashIntro.astro';
-import HeroGlow from '@/components/HeroGlow.astro';
+import HeroField from '@/components/HeroField.astro';
 import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -28,7 +28,7 @@ const projectsFor = (cats: readonly string[]) =>
 <SplashIntro />
 
 <section class="hero-section">
-	<HeroGlow />
+	<HeroField />
 
 	{/* 實驗室取景框：四角的標本檔案 metadata */}
 	<div class="hero-corners" aria-hidden="true">
