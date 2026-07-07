@@ -148,21 +148,22 @@ const projectsFor = (cats: readonly string[]) =>
 	}
 </div>
 
-<!-- hero 標題「點燃 / 熱成像」SVG 濾鏡：字形 → 液化位移 → 大範圍模糊 → 火焰熱力圖映射 -->
+<!-- hero 標題「液態氣泡點燃」SVG 濾鏡：
+     字形 → 液態位移 → 大範圍模糊 → alpha 轉灰階 → 多色光譜霓虹映射 → 疊回位移後的黑字 -->
 <svg style="display: none;" aria-hidden="true">
 	<defs>
 		<filter
 			id="ignite-filter"
-			x="-70%"
-			y="-70%"
-			width="240%"
-			height="240%"
+			x="-90%"
+			y="-90%"
+			width="280%"
+			height="280%"
 			color-interpolation-filters="sRGB"
 		>
-			<!-- 液化：湍流位移，模擬熔化 / 液態變形 -->
+			<!-- 液化：分形湍流位移，模擬不規則油狀液態變形 -->
 			<feTurbulence
 				type="fractalNoise"
-				baseFrequency="0.01"
+				baseFrequency="0.012"
 				numOctaves="2"
 				seed="7"
 				result="noise"
@@ -175,7 +176,7 @@ const projectsFor = (cats: readonly string[]) =>
 				yChannelSelector="G"
 				id="ignite-disp"
 				result="disp"></feDisplacementMap>
-			<!-- barrel blur：大範圍散焦，決定熱暈擴散半徑 -->
+			<!-- 光暈擴散半徑（描邊光暈的寬度）-->
 			<feGaussianBlur in="disp" stdDeviation="0.2" id="ignite-blur" result="blur"></feGaussianBlur>
 			<!-- 把覆蓋率（alpha）複製進 RGB，得到灰階以供上色 -->
 			<feColorMatrix
@@ -183,13 +184,18 @@ const projectsFor = (cats: readonly string[]) =>
 				type="matrix"
 				values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0"
 				result="gray"></feColorMatrix>
-			<!-- 火焰熱力圖：邊緣紅 → 橙 → 黃 → 白熱核心 -->
-			<feComponentTransfer in="gray" result="thermal">
-				<feFuncR type="table" tableValues="0 0.85 1 1 1 1"></feFuncR>
-				<feFuncG type="table" tableValues="0 0.04 0.3 0.62 0.9 1"></feFuncG>
-				<feFuncB type="table" tableValues="0 0 0 0.06 0.36 0.92"></feFuncB>
-				<feFuncA type="table" tableValues="0 0.5 0.8 0.95 1 1"></feFuncA>
+			<!-- 多色光譜霓虹：由外而內 藍青 → 洋紅 → 橙 → 黃 -->
+			<feComponentTransfer in="gray" result="spectral">
+				<feFuncR type="table" tableValues="0.10 0.16 0.92 1 1 1"></feFuncR>
+				<feFuncG type="table" tableValues="0.55 0.20 0.10 0.45 0.85 1"></feFuncG>
+				<feFuncB type="table" tableValues="0.66 0.95 0.78 0.12 0.16 0.34"></feFuncB>
+				<feFuncA type="table" tableValues="0 0.45 0.75 0.9 1 1"></feFuncA>
 			</feComponentTransfer>
+			<!-- 位移後的黑字疊回頂層：氣泡內是「液態黑字 + 多色光暈」 -->
+			<feMerge>
+				<feMergeNode in="spectral"></feMergeNode>
+				<feMergeNode in="disp"></feMergeNode>
+			</feMerge>
 		</filter>
 	</defs>
 </svg>
@@ -250,27 +256,41 @@ const projectsFor = (cats: readonly string[]) =>
 		margin: 0;
 	}
 
+	/* 底層：清晰黑字，恆定可讀 */
 	.hero-title {
 		position: relative;
 		z-index: 1;
-		/* 靜態微描邊模糊：字緣略柔 */
-		text-shadow: 0 0 0.6px rgba(26, 26, 26, 0.3);
-		transition: transform 0.3s var(--ease-oxide);
-		will-change: filter;
+		color: var(--color-ink);
 	}
 
-	/* 後層熱暈：以黑字為形狀，經 #ignite-filter 上成火焰色；靜止時隱藏 */
+	/* 上層氣泡：以黑字為形狀，經 #ignite-filter 化為「液態黑字 + 多色光暈」，
+	   用跟隨游標的圓形遮罩局部顯現——只有光標接觸的區域被點亮 */
 	.hero-title-glow {
 		position: absolute;
 		top: 0;
 		left: 0;
 		width: 100%;
 		height: 100%;
-		z-index: 0;
+		z-index: 2;
 		color: #000;
 		pointer-events: none;
-		opacity: 0;
 		filter: url(#ignite-filter);
+		--br: 0px; /* 氣泡半徑，靜止為 0 → 完全隱藏 */
+		-webkit-mask-image: radial-gradient(
+			circle var(--br) at var(--mx, 50%) var(--my, 50%),
+			#000 0%,
+			#000 55%,
+			transparent 100%
+		);
+		mask-image: radial-gradient(
+			circle var(--br) at var(--mx, 50%) var(--my, 50%),
+			#000 0%,
+			#000 55%,
+			transparent 100%
+		);
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+		will-change: mask-position;
 	}
 
 	.hero-dot {
@@ -644,70 +664,72 @@ const projectsFor = (cats: readonly string[]) =>
 </style>
 
 <script>
-	// hero 標題的「點燃 / 熱成像」互動：
-	// 懸停時前層黑字 blur 並褪進白色，後層熱力辉光被點燃（紅→橙→黃→白核心）+ 液化位移。
-	// 效能要點：所有 rAF 在冷卻歸零後停止；SVG 濾鏡僅在後層辉光上，靜止時 opacity 0。
+	// hero 標題的「液態氣泡點燃」互動：
+	// 游標接觸處浮現一個圓形氣泡，區域內黑字液態放大變形 + 多色光暈點亮，氣泡隨游標游走。
+	// 效能要點：氣泡半徑冷卻歸零後 rAF 停機、濾鏡卸下。
 	let animationFrameId: number;
 
 	function initHeroTitle() {
 		const stack = document.querySelector('[data-hero-title]') as HTMLElement | null;
-		const title = document.querySelector('.hero-title') as HTMLElement | null;
 		const glow = document.querySelector('.hero-title-glow') as HTMLElement | null;
 		const turb = document.querySelector('#ignite-turb');
 		const disp = document.querySelector('#ignite-disp');
 		const blur = document.querySelector('#ignite-blur');
 
 		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (!stack || !title || !glow || !turb || !disp || !blur || prefersReducedMotion) return;
+		if (!stack || !glow || !turb || !disp || !blur || prefersReducedMotion) return;
+		if (!window.matchMedia('(pointer: fine)').matches) return;
 
 		let phase = 0;
-		let heat = 0; // 當前熱度 0–1
-		let target = 0; // 目標熱度
+		let radius = 0; // 當前氣泡半徑
+		let targetRadius = 0; // 目標半徑
+		let mx = 50; // 游標在標題內的百分比位置
+		let my = 50;
+		const MAX_R = 190; // 氣泡最大半徑（px）
 
 		const frame = () => {
 			phase += 0.05;
-			heat += (target - heat) * 0.08; // 彈性逼近，緩慢升溫/冷卻
+			radius += (targetRadius - radius) * 0.12;
+			const k = radius / MAX_R; // 0–1 強度
 
-			// 液化：湍流頻率輕微起伏，位移隨熱度增強
-			const fy = (0.008 + Math.sin(phase) * 0.004).toFixed(4);
-			turb.setAttribute('baseFrequency', `0.01 ${fy}`);
-			disp.setAttribute('scale', (heat * 20).toFixed(2));
-			// barrel blur：熱暈擴散半徑隨熱度增大
-			blur.setAttribute('stdDeviation', (0.2 + heat * 7).toFixed(2));
+			// 液化：湍流頻率輕微起伏，油狀不規則變形
+			const fy = (0.01 + Math.sin(phase) * 0.004).toFixed(4);
+			turb.setAttribute('baseFrequency', `0.012 ${fy}`);
+			disp.setAttribute('scale', (k * 26).toFixed(2)); // 液態放大變形強度
+			blur.setAttribute('stdDeviation', (0.2 + k * 13).toFixed(2)); // 光暈擴散寬度
 
-			// 後層辉光淡入
-			glow.style.opacity = Math.min(1, heat * 1.5).toFixed(3);
-			// 前層黑字：blur 進白（26≈近黑 → 246≈近白），並輕微上浮放大
-			const b = (heat * 8).toFixed(2);
-			const l = Math.round(26 + heat * 220);
-			title.style.filter = `blur(${b}px)`;
-			title.style.color = `rgb(${l}, ${l}, ${l})`;
-			title.style.transform = `scale(${(1 + heat * 0.03).toFixed(3)}) translateY(${(-heat * 3).toFixed(1)}px)`;
+			glow.style.setProperty('--br', `${radius.toFixed(1)}px`);
+			glow.style.setProperty('--mx', `${mx.toFixed(2)}%`);
+			glow.style.setProperty('--my', `${my.toFixed(2)}%`);
 
-			if (target === 0 && heat < 0.01) {
-				// 完全冷卻：歸位並停機
-				heat = 0;
+			if (targetRadius === 0 && radius < 0.5) {
+				radius = 0;
 				disp.setAttribute('scale', '0');
 				blur.setAttribute('stdDeviation', '0.2');
-				glow.style.opacity = '0';
+				glow.style.setProperty('--br', '0px');
 				glow.style.willChange = '';
-				title.style.filter = '';
-				title.style.color = '';
-				title.style.transform = '';
 				cancelAnimationFrame(animationFrameId);
 				return;
 			}
 			animationFrameId = requestAnimationFrame(frame);
 		};
 
-		stack.addEventListener('pointerenter', () => {
-			target = 1;
-			glow.style.willChange = 'filter, opacity';
+		const track = (e: PointerEvent) => {
+			const r = stack.getBoundingClientRect();
+			mx = ((e.clientX - r.left) / r.width) * 100;
+			my = ((e.clientY - r.top) / r.height) * 100;
+		};
+
+		stack.addEventListener('pointerenter', (e) => {
+			track(e);
+			targetRadius = MAX_R;
+			glow.style.willChange = 'mask-position, filter';
 			cancelAnimationFrame(animationFrameId);
 			frame();
 		});
+		stack.addEventListener('pointermove', track, { passive: true });
 		stack.addEventListener('pointerleave', () => {
-			target = 0;
+			targetRadius = 0;
 		});
 	}
 
