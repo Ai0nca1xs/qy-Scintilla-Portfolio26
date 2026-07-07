@@ -83,8 +83,9 @@ void main() {
 
 	tint /= max(wsum, 0.001);
 	// 邊緣柔化：向四周淡出，中央略濃，保持通透airy
-	float vig = smoothstep(1.15, 0.2, length(p));
-	float amt = clamp(wsum * 0.13 * vig, 0.0, 0.6);
+	float vig = smoothstep(1.2, 0.2, length(p));
+	// 整體背景色調強度壓低至約 10–20%，僅作極淡的光譜底氣
+	float amt = clamp(wsum * 0.075 * vig, 0.0, 0.18);
 	vec3 col = mix(vec3(1.0), tint, amt);
 	gl_FragColor = vec4(col, 1.0);
 }`;

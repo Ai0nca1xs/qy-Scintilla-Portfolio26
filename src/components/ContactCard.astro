@@ -123,8 +123,11 @@ const backImg = Object.entries(cardImages).find(([path]) => path.includes('card-
 		flex-direction: column;
 		justify-content: space-between;
 		padding: clamp(1.2rem, 3vw, 2rem);
-		background: #fdfdfe;
-		border: 1px solid rgba(26, 26, 26, 0.18);
+		/* 液態玻璃卡面：半透明 + 背景模糊，透出底層光譜 */
+		background: rgba(253, 253, 254, 0.55);
+		-webkit-backdrop-filter: blur(20px) saturate(1.5);
+		backdrop-filter: blur(20px) saturate(1.5);
+		border: 1px solid rgba(255, 255, 255, 0.55);
 		border-radius: 12px;
 		box-shadow: 0 18px 50px -30px rgba(26, 26, 26, 0.35);
 		backface-visibility: hidden;

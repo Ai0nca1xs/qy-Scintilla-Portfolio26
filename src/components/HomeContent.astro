@@ -148,52 +148,52 @@ const projectsFor = (cats: readonly string[]) =>
 	}
 </div>
 
-<!-- hero 標題「液態氣泡點燃」SVG 濾鏡：
-     字形 → 液態位移 → 大範圍模糊 → alpha 轉灰階 → 多色光譜霓虹映射 → 疊回位移後的黑字 -->
+<!-- hero 標題「放大鏡液態玻璃」SVG 濾鏡：
+     白字 → 平滑液態折射位移 → 柔和光譜光暈（與背景色板呼應）→ 疊回白字。
+     大範圍 filter region 避免裁切；配合 CSS 圓形柔遮罩 + scale 放大形成放大鏡。 -->
 <svg style="display: none;" aria-hidden="true">
 	<defs>
 		<filter
 			id="ignite-filter"
-			x="-90%"
-			y="-90%"
-			width="280%"
-			height="280%"
+			x="-120%"
+			y="-120%"
+			width="340%"
+			height="340%"
 			color-interpolation-filters="sRGB"
 		>
-			<!-- 液化：分形湍流位移，模擬不規則油狀液態變形 -->
+			<!-- 平滑低頻折射：像液態玻璃，而非漣漪水波 -->
 			<feTurbulence
 				type="fractalNoise"
-				baseFrequency="0.012"
+				baseFrequency="0.006"
 				numOctaves="2"
-				seed="7"
+				seed="4"
 				result="noise"
 				id="ignite-turb"></feTurbulence>
 			<feDisplacementMap
-				in="SourceAlpha"
+				in="SourceGraphic"
 				in2="noise"
 				scale="0"
 				xChannelSelector="R"
 				yChannelSelector="G"
 				id="ignite-disp"
 				result="disp"></feDisplacementMap>
-			<!-- 光暈擴散半徑（描邊光暈的寬度）-->
-			<feGaussianBlur in="disp" stdDeviation="0.2" id="ignite-blur" result="blur"></feGaussianBlur>
-			<!-- 把覆蓋率（alpha）複製進 RGB，得到灰階以供上色 -->
+			<!-- 柔和光暈：由字形擴散，寬度隨互動增大 -->
+			<feGaussianBlur in="disp" stdDeviation="6" id="ignite-blur" result="blur"></feGaussianBlur>
 			<feColorMatrix
 				in="blur"
 				type="matrix"
 				values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0"
 				result="gray"></feColorMatrix>
-			<!-- 多色光譜霓虹：由外而內 藍青 → 洋紅 → 橙 → 黃 -->
-			<feComponentTransfer in="gray" result="spectral">
-				<feFuncR type="table" tableValues="0.10 0.16 0.92 1 1 1"></feFuncR>
-				<feFuncG type="table" tableValues="0.55 0.20 0.10 0.45 0.85 1"></feFuncG>
-				<feFuncB type="table" tableValues="0.66 0.95 0.78 0.12 0.16 0.34"></feFuncB>
-				<feFuncA type="table" tableValues="0 0.45 0.75 0.9 1 1"></feFuncA>
+			<!-- 柔和光譜（與 HeroField 同色板，透明度壓低不突兀）：藍青 → 洋紅 → 橙 → 黃 -->
+			<feComponentTransfer in="gray" result="halo">
+				<feFuncR type="table" tableValues="0.20 0.30 0.90 1 1 1"></feFuncR>
+				<feFuncG type="table" tableValues="0.60 0.38 0.28 0.52 0.82 0.96"></feFuncG>
+				<feFuncB type="table" tableValues="0.72 0.92 0.76 0.28 0.32 0.48"></feFuncB>
+				<feFuncA type="table" tableValues="0 0.26 0.42 0.56 0.66 0.74"></feFuncA>
 			</feComponentTransfer>
-			<!-- 位移後的黑字疊回頂層：氣泡內是「液態黑字 + 多色光暈」 -->
+			<!-- 白字疊回頂層：互動區內是「白字 + 柔和光暈」 -->
 			<feMerge>
-				<feMergeNode in="spectral"></feMergeNode>
+				<feMergeNode in="halo"></feMergeNode>
 				<feMergeNode in="disp"></feMergeNode>
 			</feMerge>
 		</filter>
@@ -263,8 +263,9 @@ const projectsFor = (cats: readonly string[]) =>
 		color: var(--color-ink);
 	}
 
-	/* 上層氣泡：以黑字為形狀，經 #ignite-filter 化為「液態黑字 + 多色光暈」，
-	   用跟隨游標的圓形遮罩局部顯現——只有光標接觸的區域被點亮 */
+	/* 上層放大鏡：白字 + 柔和光暈（#ignite-filter），
+	   以跟隨游標的圓形柔遮罩局部顯現，並以游標為原點 scale 放大 → 放大鏡效果。
+	   遮罩邊緣長距離漸隱，白字→黑字、光暈濃→淡平滑銜接，無裁切感。 */
 	.hero-title-glow {
 		position: absolute;
 		top: 0;
@@ -272,25 +273,30 @@ const projectsFor = (cats: readonly string[]) =>
 		width: 100%;
 		height: 100%;
 		z-index: 2;
-		color: #000;
+		color: #ffffff;
 		pointer-events: none;
 		filter: url(#ignite-filter);
-		--br: 0px; /* 氣泡半徑，靜止為 0 → 完全隱藏 */
+		--lr: 0px; /* 放大鏡半徑，靜止為 0 → 完全隱藏 */
+		--lscale: 1;
+		transform: scale(var(--lscale));
+		transform-origin: var(--mx, 50%) var(--my, 50%);
 		-webkit-mask-image: radial-gradient(
-			circle var(--br) at var(--mx, 50%) var(--my, 50%),
+			circle var(--lr) at var(--mx, 50%) var(--my, 50%),
 			#000 0%,
-			#000 55%,
+			#000 32%,
+			rgba(0, 0, 0, 0.45) 62%,
 			transparent 100%
 		);
 		mask-image: radial-gradient(
-			circle var(--br) at var(--mx, 50%) var(--my, 50%),
+			circle var(--lr) at var(--mx, 50%) var(--my, 50%),
 			#000 0%,
-			#000 55%,
+			#000 32%,
+			rgba(0, 0, 0, 0.45) 62%,
 			transparent 100%
 		);
 		-webkit-mask-repeat: no-repeat;
 		mask-repeat: no-repeat;
-		will-change: mask-position;
+		will-change: transform, mask-position;
 	}
 
 	.hero-dot {
@@ -664,9 +670,9 @@ const projectsFor = (cats: readonly string[]) =>
 </style>
 
 <script>
-	// hero 標題的「液態氣泡點燃」互動：
-	// 游標接觸處浮現一個圓形氣泡，區域內黑字液態放大變形 + 多色光暈點亮，氣泡隨游標游走。
-	// 效能要點：氣泡半徑冷卻歸零後 rAF 停機、濾鏡卸下。
+	// hero 標題的「放大鏡液態玻璃」互動：
+	// 游標處浮現一個圓形柔邊放大鏡，區域內白字 + 柔和光暈、平滑液態折射並以游標為原點放大；
+	// 白字→黑字、光暈濃→淡皆平滑漸隱，無裁切。冷卻歸零後 rAF 停機、濾鏡卸下。
 	let animationFrameId: number;
 
 	function initHeroTitle() {
@@ -681,32 +687,34 @@ const projectsFor = (cats: readonly string[]) =>
 		if (!window.matchMedia('(pointer: fine)').matches) return;
 
 		let phase = 0;
-		let radius = 0; // 當前氣泡半徑
+		let radius = 0; // 當前放大鏡半徑
 		let targetRadius = 0; // 目標半徑
 		let mx = 50; // 游標在標題內的百分比位置
 		let my = 50;
-		const MAX_R = 190; // 氣泡最大半徑（px）
+		const MAX_R = 300; // 放大鏡最大半徑（px），放大以避免裁切
 
 		const frame = () => {
-			phase += 0.05;
-			radius += (targetRadius - radius) * 0.12;
+			phase += 0.012; // 極緩慢：液態玻璃緩緩流動，而非漣漪
+			radius += (targetRadius - radius) * 0.1;
 			const k = radius / MAX_R; // 0–1 強度
 
-			// 液化：湍流頻率輕微起伏，油狀不規則變形
-			const fy = (0.01 + Math.sin(phase) * 0.004).toFixed(4);
-			turb.setAttribute('baseFrequency', `0.012 ${fy}`);
-			disp.setAttribute('scale', (k * 26).toFixed(2)); // 液態放大變形強度
-			blur.setAttribute('stdDeviation', (0.2 + k * 13).toFixed(2)); // 光暈擴散寬度
+			// 平滑液態折射：固定低頻、極緩慢起伏，位移隨強度增大（放大鏡的液態感）
+			const fy = (0.006 + Math.sin(phase) * 0.0015).toFixed(4);
+			turb.setAttribute('baseFrequency', `0.006 ${fy}`);
+			disp.setAttribute('scale', (k * 14).toFixed(2));
+			blur.setAttribute('stdDeviation', (2 + k * 10).toFixed(2)); // 光暈擴散寬度
 
-			glow.style.setProperty('--br', `${radius.toFixed(1)}px`);
+			glow.style.setProperty('--lr', `${radius.toFixed(1)}px`);
+			glow.style.setProperty('--lscale', (1 + k * 0.16).toFixed(3)); // 放大鏡放大倍率
 			glow.style.setProperty('--mx', `${mx.toFixed(2)}%`);
 			glow.style.setProperty('--my', `${my.toFixed(2)}%`);
 
 			if (targetRadius === 0 && radius < 0.5) {
 				radius = 0;
 				disp.setAttribute('scale', '0');
-				blur.setAttribute('stdDeviation', '0.2');
-				glow.style.setProperty('--br', '0px');
+				blur.setAttribute('stdDeviation', '2');
+				glow.style.setProperty('--lr', '0px');
+				glow.style.setProperty('--lscale', '1');
 				glow.style.willChange = '';
 				cancelAnimationFrame(animationFrameId);
 				return;
@@ -723,7 +731,7 @@ const projectsFor = (cats: readonly string[]) =>
 		stack.addEventListener('pointerenter', (e) => {
 			track(e);
 			targetRadius = MAX_R;
-			glow.style.willChange = 'mask-position, filter';
+			glow.style.willChange = 'transform, mask-position, filter';
 			cancelAnimationFrame(animationFrameId);
 			frame();
 		});

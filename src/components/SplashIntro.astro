@@ -1,17 +1,12 @@
 ---
-// 開屏動畫：世界觀的展開。
-// 基於 Danilo Guanabara 的《Creation》著色器（pouet.net/prod.php?which=57245）改造：
-// 顏色白光化（保留些許光譜色暈與光感呼吸），環紋以五芒星形調制——微光在黑暗中展開自己的星形光譜。
-// 點擊任意處或約 3.6 秒後，畫面像相紙定影般「顯影」讓位給首頁。
-// 每個瀏覽會話只播放一次（sessionStorage），減弱動效設置下直接跳過。
+// 開屏動畫：世界觀的展開（白底光感版）。
+// 與首頁 HeroField 同一套光譜雲氣著色器，白底之上以顏色表現光感；無文字。
+// 載入後中心白光逐漸放大鋪滿畫面，隨即淡出自動進入首頁——與首頁的光譜雲氣無縫銜接。
+// 每個瀏覽會話只播放一次（sessionStorage），減弱動效直接跳過。
 ---
 
 <div class="splash" data-splash aria-hidden="true">
 	<canvas class="splash-canvas" data-splash-canvas></canvas>
-	<div class="splash-core">
-		<span class="splash-title">SCINTILLA<span class="splash-dot">.</span></span>
-		<span class="metadata splash-hint">CLICK TO DEVELOP</span>
-	</div>
 </div>
 
 <style>
@@ -19,115 +14,90 @@
 		position: fixed;
 		inset: 0;
 		z-index: 9600;
-		background: #060708;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition:
-			opacity 1s var(--ease-develop),
-			filter 1s var(--ease-develop);
+		background: #ffffff;
+		transition: opacity 0.9s var(--ease-develop);
 	}
-
-	/* 顯影離場：亮度上浮、模糊消散 */
 	.splash.done {
 		opacity: 0;
-		filter: blur(10px);
 		pointer-events: none;
 	}
-
 	.splash-canvas {
 		position: absolute;
 		inset: 0;
 		width: 100%;
 		height: 100%;
 	}
-
-	.splash-core {
-		position: relative;
-		z-index: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.2rem;
-		pointer-events: none;
-		text-align: center;
-	}
-
-	.splash-title {
-		font-size: clamp(3rem, 11vw, 8.5rem);
-		font-weight: 700;
-		line-height: 0.95;
-		letter-spacing: 0.02em;
-		color: #f8f9fa;
-		mix-blend-mode: difference; /* 星光掃過時字身自然反轉，保持可讀 */
-	}
-
-	.splash-dot {
-		color: var(--color-magenta);
-	}
-
-	.splash-hint {
-		color: #f8f9fa;
-		opacity: 0.5;
-		animation: splash-pulse 2.4s ease-in-out infinite;
-	}
-
-	@keyframes splash-pulse {
-		0%,
-		100% {
-			opacity: 0.5;
-		}
-		50% {
-			opacity: 0.9;
-		}
-	}
 </style>
 
 <script>
 	const SEEN_KEY = 'scintilla-splash-seen';
 
-	// 《Creation》by Danilo Guanabara 的改造版：
-	// - l 以 atan 角度做五芒星調制 → 環紋與射線呈星形
-	// - 輸出向亮度白光靠攏，保留 18% 的原始光譜色暈
 	const FRAG = `
 precision highp float;
 uniform float u_t;
 uniform vec2 u_r;
+uniform float u_bloom;
 
-void main() {
-	vec3 c;
-	float l, z = u_t;
-	for (int i = 0; i < 3; i++) {
-		vec2 uv, p = gl_FragCoord.xy / u_r;
-		uv = p;
-		p -= 0.5;
-		p.x *= u_r.x / u_r.y;
-		z += 0.07;
-		float a = atan(p.y, p.x);
-		l = length(p) * (1.0 + 0.28 * cos(a * 5.0 - z * 0.6));
-		uv += p / l * (sin(z) + 1.0) * abs(sin(l * 9.0 - z - z));
-		c[i] = 0.01 / length(mod(uv, 1.0) - 0.5);
+const vec3 P0 = vec3(0.894, 0.0, 0.486);
+const vec3 P1 = vec3(1.0, 0.361, 0.0);
+const vec3 P2 = vec3(1.0, 0.835, 0.0);
+const vec3 P3 = vec3(0.122, 0.235, 1.0);
+const vec3 P4 = vec3(0.35, 0.75, 0.72);
+const float PI = 3.14159265;
+
+vec3 pal(int i){
+	int m = i - (i/5)*5;
+	if(m==0) return P0; if(m==1) return P1; if(m==2) return P2; if(m==3) return P3; return P4;
+}
+
+void main(){
+	vec2 uv = gl_FragCoord.xy / u_r;
+	vec2 p = uv - 0.5;
+	p.x *= u_r.x / u_r.y;
+
+	vec3 tint = vec3(0.0);
+	float wsum = 0.0;
+	for(int i=0;i<20;i++){
+		float fi = float(i);
+		float ang = fi*2.399963 + u_t*0.05*(1.0+0.3*sin(fi));
+		vec2 dir = vec2(cos(ang), sin(ang));
+		float coord = dot(p, dir);
+		float freq = 3.0 + mod(fi,4.0);
+		float g = 0.5 + 0.5*sin(coord*freq*PI + u_t*0.7 + fi);
+		float band = pow(g, 6.0);
+		tint += pal(i)*band; wsum += band;
 	}
-	float lum = (c.r + c.g + c.b) / 3.0;
-	vec3 tinted = mix(vec3(lum), c, 0.18);
-	gl_FragColor = vec4(tinted / l, 1.0);
+	for(int j=0;j<4;j++){
+		float fj=float(j);
+		vec2 c = vec2(sin(u_t*0.14+fj*1.7)*0.34, cos(u_t*0.16+fj*2.3)*0.3);
+		float b = smoothstep(0.55, 0.0, length(p-c));
+		tint += pal(j*2+1)*b*0.7; wsum += b*0.7;
+	}
+	tint /= max(wsum, 0.001);
+	float vig = smoothstep(1.2, 0.15, length(p));
+	float amt = clamp(wsum*0.16*vig, 0.0, 0.62);
+	vec3 col = mix(vec3(1.0), tint, amt);
+
+	// 中心白光：始終有一枚柔和光核，bloom 增大時放大鋪滿全屏
+	float d = length(p);
+	float r = 0.09 + u_bloom*1.75;
+	float disc = smoothstep(r, r - 0.28, d);
+	col = mix(col, vec3(1.0), disc);
+
+	gl_FragColor = vec4(col, 1.0);
 }`;
 
-	const VERT = `
-attribute vec2 a_pos;
-void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+	const VERT = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }`;
 
-	function startShader(canvas: HTMLCanvasElement): (() => void) | null {
-		const gl = canvas.getContext('webgl', { antialias: false });
+	function startShader(canvas: HTMLCanvasElement) {
+		const gl = canvas.getContext('webgl', { antialias: false, alpha: false });
 		if (!gl) return null;
-
 		const compile = (type: number, src: string) => {
-			const shader = gl.createShader(type)!;
-			gl.shaderSource(shader, src);
-			gl.compileShader(shader);
-			return shader;
+			const s = gl.createShader(type)!;
+			gl.shaderSource(s, src);
+			gl.compileShader(s);
+			return s;
 		};
-
 		const program = gl.createProgram()!;
 		gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
 		gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
@@ -135,20 +105,16 @@ void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
 		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
 		gl.useProgram(program);
 
-		// 覆蓋全屏的兩個三角形
-		const buffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-		gl.bufferData(
-			gl.ARRAY_BUFFER,
-			new Float32Array([-1, -1, 3, -1, -1, 3]),
-			gl.STATIC_DRAW
-		);
+		const buf = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
 		const loc = gl.getAttribLocation(program, 'a_pos');
 		gl.enableVertexAttribArray(loc);
 		gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
 		const uT = gl.getUniformLocation(program, 'u_t');
 		const uR = gl.getUniformLocation(program, 'u_r');
+		const uB = gl.getUniformLocation(program, 'u_bloom');
 
 		const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 		const resize = () => {
@@ -160,18 +126,27 @@ void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
 		window.addEventListener('resize', resize);
 
 		let rafId = 0;
+		let bloom = 0;
+		let bloomTarget = 0;
 		const start = performance.now();
 		const frame = () => {
+			bloom += (bloomTarget - bloom) * 0.05;
 			gl.uniform1f(uT, (performance.now() - start) / 1000);
 			gl.uniform2f(uR, canvas.width, canvas.height);
+			gl.uniform1f(uB, bloom);
 			gl.drawArrays(gl.TRIANGLES, 0, 3);
 			rafId = requestAnimationFrame(frame);
 		};
 		frame();
 
-		return () => {
-			cancelAnimationFrame(rafId);
-			window.removeEventListener('resize', resize);
+		return {
+			igniteBloom: () => {
+				bloomTarget = 1.15;
+			},
+			stop: () => {
+				cancelAnimationFrame(rafId);
+				window.removeEventListener('resize', resize);
+			},
 		};
 	}
 
@@ -186,9 +161,8 @@ void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
 		}
 
 		document.body.style.overflow = 'hidden';
-
 		const canvas = splash.querySelector('[data-splash-canvas]');
-		const stop = canvas instanceof HTMLCanvasElement ? startShader(canvas) : null;
+		const sim = canvas instanceof HTMLCanvasElement ? startShader(canvas) : null;
 
 		let dismissed = false;
 		const dismiss = () => {
@@ -198,13 +172,19 @@ void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
 			document.body.style.overflow = '';
 			splash.classList.add('done');
 			window.setTimeout(() => {
-				stop?.();
+				sim?.stop();
 				splash.remove();
-			}, 1100);
+			}, 950);
 		};
 
-		splash.addEventListener('click', dismiss);
-		window.setTimeout(dismiss, 3600);
+		// 時序：光譜雲氣播放約 1.7s → 中心白光放大鋪滿約 1.1s → 淡出進入首頁
+		window.setTimeout(() => sim?.igniteBloom(), 1700);
+		window.setTimeout(dismiss, 2900);
+		// 允許點擊快進
+		splash.addEventListener('click', () => {
+			sim?.igniteBloom();
+			window.setTimeout(dismiss, 550);
+		});
 	}
 
 	document.addEventListener('astro:page-load', initSplash);
