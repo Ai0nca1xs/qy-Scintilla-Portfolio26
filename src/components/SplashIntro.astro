@@ -1,12 +1,13 @@
 ---
 // 開屏動畫：世界觀的展開。
-// 墨黑虛空中，煅燒光譜的流體隨游標攪動（WebGL 流體模擬，僅開屏期間運行），
-// 點擊任意處或約 3.5 秒後，畫面像相紙定影般「顯影」讓位給首頁。
+// 基於 Danilo Guanabara 的《Creation》著色器（pouet.net/prod.php?which=57245）改造：
+// 顏色白光化（保留些許光譜色暈與光感呼吸），環紋以五芒星形調制——微光在黑暗中展開自己的星形光譜。
+// 點擊任意處或約 3.6 秒後，畫面像相紙定影般「顯影」讓位給首頁。
 // 每個瀏覽會話只播放一次（sessionStorage），減弱動效設置下直接跳過。
 ---
 
 <div class="splash" data-splash aria-hidden="true">
-	<div class="splash-fluid" data-splash-fluid></div>
+	<canvas class="splash-canvas" data-splash-canvas></canvas>
 	<div class="splash-core">
 		<span class="splash-title">SCINTILLA<span class="splash-dot">.</span></span>
 		<span class="metadata splash-hint">CLICK TO DEVELOP</span>
@@ -18,7 +19,7 @@
 		position: fixed;
 		inset: 0;
 		z-index: 9600;
-		background: #0b0c0e;
+		background: #060708;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -34,8 +35,7 @@
 		pointer-events: none;
 	}
 
-	.splash-fluid,
-	.splash-fluid :global(canvas) {
+	.splash-canvas {
 		position: absolute;
 		inset: 0;
 		width: 100%;
@@ -59,6 +59,7 @@
 		line-height: 0.95;
 		letter-spacing: 0.02em;
 		color: #f8f9fa;
+		mix-blend-mode: difference; /* 星光掃過時字身自然反轉，保持可讀 */
 	}
 
 	.splash-dot {
@@ -85,6 +86,95 @@
 <script>
 	const SEEN_KEY = 'scintilla-splash-seen';
 
+	// 《Creation》by Danilo Guanabara 的改造版：
+	// - l 以 atan 角度做五芒星調制 → 環紋與射線呈星形
+	// - 輸出向亮度白光靠攏，保留 18% 的原始光譜色暈
+	const FRAG = `
+precision highp float;
+uniform float u_t;
+uniform vec2 u_r;
+
+void main() {
+	vec3 c;
+	float l, z = u_t;
+	for (int i = 0; i < 3; i++) {
+		vec2 uv, p = gl_FragCoord.xy / u_r;
+		uv = p;
+		p -= 0.5;
+		p.x *= u_r.x / u_r.y;
+		z += 0.07;
+		float a = atan(p.y, p.x);
+		l = length(p) * (1.0 + 0.28 * cos(a * 5.0 - z * 0.6));
+		uv += p / l * (sin(z) + 1.0) * abs(sin(l * 9.0 - z - z));
+		c[i] = 0.01 / length(mod(uv, 1.0) - 0.5);
+	}
+	float lum = (c.r + c.g + c.b) / 3.0;
+	vec3 tinted = mix(vec3(lum), c, 0.18);
+	gl_FragColor = vec4(tinted / l, 1.0);
+}`;
+
+	const VERT = `
+attribute vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }`;
+
+	function startShader(canvas: HTMLCanvasElement): (() => void) | null {
+		const gl = canvas.getContext('webgl', { antialias: false });
+		if (!gl) return null;
+
+		const compile = (type: number, src: string) => {
+			const shader = gl.createShader(type)!;
+			gl.shaderSource(shader, src);
+			gl.compileShader(shader);
+			return shader;
+		};
+
+		const program = gl.createProgram()!;
+		gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
+		gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
+		gl.linkProgram(program);
+		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+		gl.useProgram(program);
+
+		// 覆蓋全屏的兩個三角形
+		const buffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		gl.bufferData(
+			gl.ARRAY_BUFFER,
+			new Float32Array([-1, -1, 3, -1, -1, 3]),
+			gl.STATIC_DRAW
+		);
+		const loc = gl.getAttribLocation(program, 'a_pos');
+		gl.enableVertexAttribArray(loc);
+		gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+		const uT = gl.getUniformLocation(program, 'u_t');
+		const uR = gl.getUniformLocation(program, 'u_r');
+
+		const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+		const resize = () => {
+			canvas.width = Math.floor(canvas.clientWidth * dpr);
+			canvas.height = Math.floor(canvas.clientHeight * dpr);
+			gl.viewport(0, 0, canvas.width, canvas.height);
+		};
+		resize();
+		window.addEventListener('resize', resize);
+
+		let rafId = 0;
+		const start = performance.now();
+		const frame = () => {
+			gl.uniform1f(uT, (performance.now() - start) / 1000);
+			gl.uniform2f(uR, canvas.width, canvas.height);
+			gl.drawArrays(gl.TRIANGLES, 0, 3);
+			rafId = requestAnimationFrame(frame);
+		};
+		frame();
+
+		return () => {
+			cancelAnimationFrame(rafId);
+			window.removeEventListener('resize', resize);
+		};
+	}
+
 	function initSplash() {
 		const splash = document.querySelector('[data-splash]');
 		if (!(splash instanceof HTMLElement)) return;
@@ -96,9 +186,11 @@
 		}
 
 		document.body.style.overflow = 'hidden';
-		let sim: { stop: () => void } | null = null;
-		let dismissed = false;
 
+		const canvas = splash.querySelector('[data-splash-canvas]');
+		const stop = canvas instanceof HTMLCanvasElement ? startShader(canvas) : null;
+
+		let dismissed = false;
 		const dismiss = () => {
 			if (dismissed) return;
 			dismissed = true;
@@ -106,39 +198,10 @@
 			document.body.style.overflow = '';
 			splash.classList.add('done');
 			window.setTimeout(() => {
-				try {
-					sim?.stop();
-				} catch {
-					/* 模擬器已停止 */
-				}
+				stop?.();
 				splash.remove();
 			}, 1100);
 		};
-
-		// 流體模擬按需加載，失敗時開屏依然可用（純黑底 + 標題）
-		import('webgl-fluid-enhanced')
-			.then(({ default: WebGLFluidEnhanced }) => {
-				if (dismissed) return;
-				const container = splash.querySelector('[data-splash-fluid]');
-				if (!(container instanceof HTMLElement)) return;
-				const fluid = new WebGLFluidEnhanced(container);
-				fluid.setConfig({
-					colorPalette: ['#e4007c', '#ff5c00', '#1f3cff', '#ffd500'],
-					backgroundColor: '#0b0c0e',
-					transparent: false,
-					hover: true,
-					bloom: true,
-					densityDissipation: 2.2,
-					splatRadius: 0.22,
-					brightness: 0.6,
-				});
-				fluid.start();
-				fluid.multipleSplats(7);
-				sim = fluid;
-			})
-			.catch(() => {
-				/* WebGL 不可用時静默降級 */
-			});
 
 		splash.addEventListener('click', dismiss);
 		window.setTimeout(dismiss, 3600);

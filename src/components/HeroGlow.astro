@@ -1,0 +1,121 @@
+---
+// Hero 主標題背後的光暈層：白底之上，數團光譜色的柔光暈隨時間緩慢呼吸、
+// 隨游標位移產生 barrel（桶形）位移感。呼應參考圖裡「文字周圍彩色柔光」的觀感。
+// 純 Canvas 2D 實現（無依賴），減弱動效設置下靜止呈現一幀。
+---
+
+<canvas class="hero-glow" data-hero-glow aria-hidden="true"></canvas>
+
+<style>
+	.hero-glow {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 0;
+		pointer-events: none;
+	}
+</style>
+
+<script>
+	// 光暈團：每團一個光譜色，各自以不同相位/半徑做利薩茹漂移。
+	// 顏色取自站點純色盤，但整體壓低飽和、疊加在白底上 → 柔光而非實色。
+	type Blob = {
+		hue: number;
+		baseX: number;
+		baseY: number;
+		rx: number;
+		ry: number;
+		phase: number;
+		speed: number;
+		size: number;
+	};
+
+	function initHeroGlow() {
+		const canvas = document.querySelector('[data-hero-glow]');
+		if (!(canvas instanceof HTMLCanvasElement)) return;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+
+		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+
+		// 站點光譜色的 HSL 色相：洋紅 / 橙 / 黃 / 藍 / 青
+		const blobs: Blob[] = [
+			{ hue: 330, baseX: 0.32, baseY: 0.42, rx: 0.08, ry: 0.06, phase: 0, speed: 0.18, size: 0.34 },
+			{ hue: 24, baseX: 0.66, baseY: 0.5, rx: 0.07, ry: 0.09, phase: 2, speed: 0.22, size: 0.3 },
+			{ hue: 52, baseX: 0.2, baseY: 0.62, rx: 0.06, ry: 0.05, phase: 4, speed: 0.16, size: 0.26 },
+			{ hue: 226, baseX: 0.78, baseY: 0.36, rx: 0.09, ry: 0.07, phase: 1, speed: 0.2, size: 0.32 },
+			{ hue: 168, baseX: 0.5, baseY: 0.68, rx: 0.05, ry: 0.08, phase: 3, speed: 0.24, size: 0.24 },
+		];
+
+		let w = 0;
+		let h = 0;
+		const resize = () => {
+			w = canvas.clientWidth;
+			h = canvas.clientHeight;
+			canvas.width = Math.floor(w * dpr);
+			canvas.height = Math.floor(h * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+		resize();
+		window.addEventListener('resize', resize);
+
+		// 游標目標（0–1），柔性插值跟隨 → barrel 位移
+		let mx = 0.5;
+		let my = 0.5;
+		let cmx = 0.5;
+		let cmy = 0.5;
+		const section = canvas.closest('.hero-section') ?? document.body;
+		section.addEventListener(
+			'pointermove',
+			(e) => {
+				const pe = e as PointerEvent;
+				const rect = canvas.getBoundingClientRect();
+				mx = (pe.clientX - rect.left) / rect.width;
+				my = (pe.clientY - rect.top) / rect.height;
+			},
+			{ passive: true }
+		);
+
+		let rafId = 0;
+		const render = (time: number) => {
+			const tt = time / 1000;
+			cmx += (mx - cmx) * 0.05;
+			cmy += (my - cmy) * 0.05;
+
+			ctx.clearRect(0, 0, w, h);
+			ctx.globalCompositeOperation = 'multiply';
+
+			for (const b of blobs) {
+				const driftX = Math.sin(tt * b.speed + b.phase) * b.rx;
+				const driftY = Math.cos(tt * b.speed * 1.3 + b.phase) * b.ry;
+				// barrel：離中心越遠的團被游標推得越多
+				const pullX = (cmx - 0.5) * 0.12;
+				const pullY = (cmy - 0.5) * 0.12;
+				const cx = (b.baseX + driftX + pullX) * w;
+				const cy = (b.baseY + driftY + pullY) * h;
+				const radius = b.size * Math.min(w, h) * (0.9 + 0.1 * Math.sin(tt * 0.5 + b.phase));
+
+				const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+				grad.addColorStop(0, `hsla(${b.hue}, 92%, 62%, 0.55)`);
+				grad.addColorStop(0.45, `hsla(${b.hue}, 90%, 66%, 0.22)`);
+				grad.addColorStop(1, `hsla(${b.hue}, 90%, 70%, 0)`);
+				ctx.fillStyle = grad;
+				ctx.beginPath();
+				ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+				ctx.fill();
+			}
+
+			ctx.globalCompositeOperation = 'source-over';
+			if (!reduced) rafId = requestAnimationFrame(render);
+		};
+		render(0);
+
+		document.addEventListener('astro:before-swap', () => cancelAnimationFrame(rafId), {
+			once: true,
+		});
+	}
+
+	document.addEventListener('astro:page-load', initHeroGlow);
+</script>

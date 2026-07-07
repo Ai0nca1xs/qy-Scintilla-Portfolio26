@@ -3,6 +3,7 @@
 // 結構：Hero → 01 Profile（含簡版 CV）→ 02 Practice（三列：定位/領域/細分與作品）→ 03 Gallery
 import { getCollection } from 'astro:content';
 import SplashIntro from '@/components/SplashIntro.astro';
+import HeroGlow from '@/components/HeroGlow.astro';
 import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -27,6 +28,8 @@ const projectsFor = (cats: readonly string[]) =>
 <SplashIntro />
 
 <section class="hero-section">
+	<HeroGlow />
+
 	{/* 實驗室取景框：四角的標本檔案 metadata */}
 	<div class="hero-corners" aria-hidden="true">
 		<span class="metadata corner tl">SCINTILLA — SPECIMEN ARCHIVE</span>
@@ -143,7 +146,7 @@ const projectsFor = (cats: readonly string[]) =>
 <!-- hero 標題的「液態金屬」SVG 濾鏡（全頁僅此一份定義） -->
 <svg style="display: none;" aria-hidden="true">
 	<defs>
-		<filter id="liquid-filter" x="-20%" y="-20%" width="140%" height="140%">
+		<filter id="liquid-filter" x="-25%" y="-25%" width="150%" height="150%">
 			<feTurbulence
 				type="fractalNoise"
 				baseFrequency="0"
@@ -156,7 +159,10 @@ const projectsFor = (cats: readonly string[]) =>
 				scale="0"
 				xChannelSelector="R"
 				yChannelSelector="G"
-				id="displacement"></feDisplacementMap>
+				id="displacement"
+				result="displaced"></feDisplacementMap>
+			<!-- barrel blur：位移後疊加一層可控高斯模糊，形成「熔化/散焦」的餘韻 -->
+			<feGaussianBlur in="displaced" stdDeviation="0" id="barrel-blur"></feGaussianBlur>
 		</filter>
 	</defs>
 </svg>
@@ -173,8 +179,15 @@ const projectsFor = (cats: readonly string[]) =>
 		text-align: center;
 	}
 
+	/* hero-core / 取景框 / 提示都疊在光暈層之上 */
+	.hero-core {
+		position: relative;
+		z-index: 1;
+	}
+
 	.hero-corners .corner {
 		position: absolute;
+		z-index: 1;
 		opacity: 0.4;
 	}
 	.corner.tl {
@@ -214,6 +227,7 @@ const projectsFor = (cats: readonly string[]) =>
 
 	.scroll-hint {
 		position: absolute;
+		z-index: 1;
 		bottom: 1.4rem;
 		left: 50%;
 		transform: translateX(-50%);
@@ -582,10 +596,11 @@ const projectsFor = (cats: readonly string[]) =>
 		const title = document.querySelector('.hero-title') as HTMLElement | null;
 		const turbulence = document.querySelector('#turbulence');
 		const displacement = document.querySelector('#displacement');
+		const barrelBlur = document.querySelector('#barrel-blur');
 
 		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-		if (!title || !turbulence || !displacement || prefersReducedMotion) return;
+		if (!title || !turbulence || !displacement || !barrelBlur || prefersReducedMotion) return;
 
 		let phase = 0;
 		let currentScale = 0;
@@ -599,10 +614,13 @@ const projectsFor = (cats: readonly string[]) =>
 
 			currentScale += (targetScale - currentScale) * 0.08;
 			displacement.setAttribute('scale', currentScale.toString());
+			// barrel blur 隨形變強度連動（位移的 12%），形成散焦餘韻
+			barrelBlur.setAttribute('stdDeviation', (currentScale * 0.12).toFixed(3));
 
 			if (targetScale === 0 && currentScale < 0.1) {
 				currentScale = 0;
 				displacement.setAttribute('scale', '0');
+				barrelBlur.setAttribute('stdDeviation', '0');
 				title.style.filter = '';
 				title.style.willChange = '';
 				cancelAnimationFrame(animationFrameId);

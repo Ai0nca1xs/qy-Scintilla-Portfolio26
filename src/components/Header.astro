@@ -83,15 +83,15 @@ const navItems = [
 		align-items: center;
 		max-width: var(--container-max-width);
 		margin: 0 auto;
-		padding: 0.7rem var(--gutter);
+		padding: 0.35rem var(--gutter);
 	}
 
 	/* 2. 文字基礎設定 */
 	.site-header a,
 	.site-header span {
-		font-size: 13px;
+		font-size: 11px;
 		font-weight: 400;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.1em;
 		margin: 0;
 		text-transform: uppercase;
 	}
@@ -135,7 +135,7 @@ const navItems = [
 	}
 
 	.nav-pill {
-		--half: 16px; /* 膠囊高度的一半，決定 3D 滾動的軸距 */
+		--half: 9.5px; /* 膠囊高度的一半，決定 3D 滾動的軸距（須與 pill-face 高度匹配）*/
 		display: block;
 		perspective: 600px;
 	}
@@ -155,8 +155,8 @@ const navItems = [
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 0.45rem 1rem;
-		border-radius: 8px;
+		padding: 0.28rem 0.85rem;
+		border-radius: 999px;
 		background: #e9ebee;
 		color: var(--color-ink);
 		white-space: nowrap;
