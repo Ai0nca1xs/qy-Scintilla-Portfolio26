@@ -38,50 +38,52 @@ uniform float u_t;
 uniform vec2 u_r;
 uniform float u_bloom;
 
-const vec3 P0 = vec3(0.894, 0.0, 0.486);
-const vec3 P1 = vec3(1.0, 0.361, 0.0);
-const vec3 P2 = vec3(1.0, 0.835, 0.0);
-const vec3 P3 = vec3(0.122, 0.235, 1.0);
-const vec3 P4 = vec3(0.35, 0.75, 0.72);
-const float PI = 3.14159265;
-
-vec3 pal(int i){
-	int m = i - (i/5)*5;
-	if(m==0) return P0; if(m==1) return P1; if(m==2) return P2; if(m==3) return P3; return P4;
+// 液態金屬循環色板：靛藍 → 金 → 暗酒紅（循環）
+vec3 metal(float t){
+	t = fract(t);
+	vec3 indigo = vec3(0.16, 0.20, 0.52);
+	vec3 gold   = vec3(0.85, 0.66, 0.16);
+	vec3 wine   = vec3(0.36, 0.09, 0.17);
+	if (t < 0.3333) return mix(indigo, gold, t / 0.3333);
+	else if (t < 0.6666) return mix(gold, wine, (t - 0.3333) / 0.3333);
+	return mix(wine, indigo, (t - 0.6666) / 0.3334);
 }
 
+mat2 rot(float a){ return mat2(cos(a), -sin(a), sin(a), cos(a)); }
+
 void main(){
-	vec2 uv = gl_FragCoord.xy / u_r;
-	vec2 p = uv - 0.5;
-	p.x *= u_r.x / u_r.y;
+	// 中心化 + 等比 + 緩慢整體旋轉
+	vec2 pc = (gl_FragCoord.xy - 0.5 * u_r) / u_r.y;
+	vec2 p = rot(u_t * 0.05) * pc;
 
-	vec3 tint = vec3(0.0);
-	float wsum = 0.0;
-	for(int i=0;i<20;i++){
-		float fi = float(i);
-		float ang = fi*2.399963 + u_t*0.05*(1.0+0.3*sin(fi));
-		vec2 dir = vec2(cos(ang), sin(ang));
-		float coord = dot(p, dir);
-		float freq = 3.0 + mod(fi,4.0);
-		float g = 0.5 + 0.5*sin(coord*freq*PI + u_t*0.7 + fi);
-		float band = pow(g, 6.0);
-		tint += pal(i)*band; wsum += band;
+	// —— XsXXDn「Creation」原始 fract 環狀折疊結構 ——
+	vec3 c;
+	float l, z = u_t;
+	for (int i = 0; i < 3; i++) {
+		vec2 pp = p;
+		vec2 uv = pp + 0.5;
+		z += 0.07;
+		l = length(pp);
+		uv += pp / l * (sin(z) + 1.0) * abs(sin(l * 9.0 - z - z));
+		c[i] = 0.01 / length(mod(uv, 1.0) - 0.5);
 	}
-	for(int j=0;j<4;j++){
-		float fj=float(j);
-		vec2 c = vec2(sin(u_t*0.14+fj*1.7)*0.34, cos(u_t*0.16+fj*2.3)*0.3);
-		float b = smoothstep(0.55, 0.0, length(p-c));
-		tint += pal(j*2+1)*b*0.7; wsum += b*0.7;
-	}
-	tint /= max(wsum, 0.001);
-	float vig = smoothstep(1.2, 0.15, length(p));
-	float amt = clamp(wsum*0.16*vig, 0.0, 0.62);
-	vec3 col = mix(vec3(1.0), tint, amt);
+	float field = clamp((c.x + c.y + c.z) / 3.0 / max(l, 0.001), 0.0, 1.0);
 
-	// 中心白光：始終有一枚柔和光核，bloom 增大時放大鋪滿全屏
-	float d = length(p);
-	float r = 0.09 + u_bloom*1.75;
-	float disc = smoothstep(r, r - 0.28, d);
+	// 階梯量化 → 清晰等高線色帶
+	const float BANDS = 6.0;
+	float q = floor(field * BANDS) / BANDS;
+
+	// 液態金屬上色（場值 + 時間偏移循環）
+	vec3 metalCol = metal(q + u_t * 0.03);
+
+	// 白底合成：場強越高越顯金屬色，邊緣淡出保持通透
+	float vig = smoothstep(1.1, 0.15, length(pc));
+	float amt = clamp(field * 1.15 * vig, 0.0, 0.92);
+	vec3 col = mix(vec3(1.0), metalCol, amt);
+
+	// 中心白光：bloom 增大時放大鋪滿全屏
+	float rr = 0.09 + u_bloom * 1.75;
+	float disc = smoothstep(rr, rr - 0.28, length(pc));
 	col = mix(col, vec3(1.0), disc);
 
 	gl_FragColor = vec4(col, 1.0);

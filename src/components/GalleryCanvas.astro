@@ -1,8 +1,7 @@
 ---
 // 無限畫布畫廊（Aragoza 式）：自由散置的縮略圖磚，四個方向無限循環，
-// 拖拽漫遊 + 慣性滑行 + 閒置緩慢漂移。
-// 磚面目前為純色佔位（標注真實的 Gallery 內容名目），
-// 素材就位後逐磚替換為圖片/音頻/文字卡。
+// 拖拽漫遊 + 慣性滑行 + 閒置緩慢漂移。點擊磚以 FLIP 手法放大居中查看詳情。
+// 磚面目前為純色佔位（標注真實的 Gallery 內容名目），素材就位後逐磚替換為圖片/音頻/文字卡。
 import { useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -20,6 +19,8 @@ type Tile = {
 	code: string;
 	title: string;
 	note?: string;
+	date?: string;
+	desc?: string;
 	tone: string;
 	ink?: string;
 	x: number;
@@ -30,23 +31,26 @@ type Tile = {
 };
 
 const tiles: Tile[] = [
-	{ code: 'GAL-001', title: 'Simulacre', note: 'Collages, 2020–21', tone: 'var(--color-magenta)', x: 60, y: 90, w: 300, h: 390 },
-	{ code: 'GAL-002', title: 'Rythme', note: 'Laser × son, 2019–20', tone: '#0b0c0e', x: 440, y: 40, w: 260, h: 260 },
-	{ code: 'GAL-003', title: 'XX : XX', note: 'Lumière × objet, 2020', tone: 'var(--color-orange)', x: 790, y: 130, w: 220, h: 280 },
-	{ code: 'GAL-004', title: 'La rumeur', note: 'Photo × audio, 2026', tone: 'var(--color-slate)', x: 1100, y: 70, w: 320, h: 220 },
+	{ code: 'GAL-001', title: 'Simulacre', note: 'Collage', date: '2020–21', tone: 'var(--color-magenta)', x: 60, y: 90, w: 300, h: 390, desc: 'Collages émotionnels reconstruits à partir de fragments de magazines — retenir ce qui s’efface.' },
+	{ code: 'GAL-002', title: 'Rythme', note: 'Laser × son', date: '2019–20', tone: '#0b0c0e', x: 440, y: 40, w: 260, h: 260, desc: 'Un faisceau laser réfracté par les vibrations sonores d’un haut-parleur.' },
+	{ code: 'GAL-003', title: 'XX : XX', note: 'Lumière × objet', date: '2020', tone: 'var(--color-orange)', x: 790, y: 130, w: 220, h: 280, desc: 'Étude d’illumination : superposition d’objets sous divers angles de lumière colorée.' },
+	{ code: 'GAL-004', title: 'La rumeur', note: 'Photo × audio', date: '2026', tone: 'var(--color-slate)', x: 1100, y: 70, w: 320, h: 220, desc: 'Création sur commande : échange de photographies et de sons entre camarades.' },
 	{
 		code: 'GAL-005',
 		title: 'Écrits',
+		note: 'Poésie',
+		date: '—',
 		tone: '#1a1a1a',
 		x: 120, y: 590, w: 380, h: 240,
 		quote: 'Le bonheur est comme l’eau, il coule, s’évapore, aucune goutte ne persiste pour toujours.',
+		desc: 'Poèmes et textes courts — un journal de la pensée qui accompagne les projets.',
 	},
-	{ code: 'GAL-006', title: 'Photographie', note: 'Errances, 2019–26', tone: 'var(--color-slate)', x: 590, y: 420, w: 280, h: 350 },
-	{ code: 'GAL-007', title: 'Audio', note: 'Field recordings', tone: 'var(--color-yellow)', ink: '#1a1a1a', x: 950, y: 490, w: 240, h: 160 },
-	{ code: 'GAL-008', title: 'Noctiluca', note: 'Lampe méduse — en cours', tone: 'var(--color-blue)', x: 1250, y: 400, w: 260, h: 210 },
-	{ code: 'GAL-009', title: 'Poèmes', tone: 'var(--color-magenta)', x: 320, y: 900, w: 210, h: 140 },
-	{ code: 'GAL-010', title: '⌮', note: 'Scintilla', tone: '#fdfdfe', ink: '#1a1a1a', x: 720, y: 850, w: 160, h: 160 },
-	{ code: 'GAL-011', title: 'KÉNOSE', note: 'Croquis d’univers', tone: '#0b0c0e', x: 1010, y: 760, w: 300, h: 190 },
+	{ code: 'GAL-006', title: 'Photographie', note: 'Errances', date: '2019–26', tone: 'var(--color-slate)', x: 590, y: 420, w: 280, h: 350, desc: 'Observations quotidiennes, la lumière et la couleur comme carnet visuel.' },
+	{ code: 'GAL-007', title: 'Audio', note: 'Field recordings', date: '—', tone: 'var(--color-yellow)', ink: '#1a1a1a', x: 950, y: 490, w: 240, h: 160, desc: 'Enregistrements de terrain et partages sonores.' },
+	{ code: 'GAL-008', title: 'Noctiluca', note: 'Lampe méduse', date: 'en cours', tone: 'var(--color-blue)', x: 1250, y: 400, w: 260, h: 210, desc: 'Lampe portable inspirée de la méduse — squelette métallique, peau translucide.' },
+	{ code: 'GAL-009', title: 'Poèmes', note: 'Texte', date: '—', tone: 'var(--color-magenta)', x: 320, y: 900, w: 210, h: 140, desc: 'Fragments poétiques.' },
+	{ code: 'GAL-010', title: '⌮', note: 'Scintilla', date: '2026', tone: '#fdfdfe', ink: '#1a1a1a', x: 720, y: 850, w: 160, h: 160, desc: 'Le signe qui donne son nom à cet espace.' },
+	{ code: 'GAL-011', title: 'KÉNOSE', note: 'Croquis d’univers', date: '2026–27', tone: '#0b0c0e', x: 1010, y: 760, w: 300, h: 190, desc: 'Croquis et notes de l’univers en construction (projet de diplôme).' },
 ];
 
 // 3×3 平鋪，保證任意偏移下視口都有內容
@@ -55,7 +59,7 @@ const copies = [...Array(9).keys()];
 
 <header class="gallery-head">
 	<h1 class="title-calx">{t.gallery.heading}</h1>
-	<p class="metadata">DRAG TO WANDER — LOOPS IN ALL DIRECTIONS</p>
+	<p class="metadata">DRAG TO WANDER · CLICK TO OPEN · LOOPS IN ALL DIRECTIONS</p>
 </header>
 
 <div class="canvas-viewport" data-canvas-viewport data-cursor-label="DRAG">
@@ -70,6 +74,13 @@ const copies = [...Array(9).keys()];
 					{tiles.map((tile) => (
 						<figure
 							class="canvas-tile"
+							data-tile
+							data-code={tile.code}
+							data-title={tile.title}
+							data-date={tile.date ?? ''}
+							data-note={tile.note ?? ''}
+							data-desc={tile.desc ?? ''}
+							data-quote={tile.quote ?? ''}
 							style={`left:${tile.x}px; top:${tile.y}px; width:${tile.w}px; height:${tile.h}px; --tone:${tile.tone}; --tile-ink:${tile.ink ?? '#f8f9fa'};`}
 						>
 							<span class="metadata tile-code">{tile.code}</span>
@@ -86,13 +97,30 @@ const copies = [...Array(9).keys()];
 	</div>
 </div>
 
+{/* FLIP 詳情層：點擊磚後放大居中，收合時反向動畫回原位 */}
+<div class="gallery-detail" data-detail hidden>
+	<div class="detail-backdrop" data-detail-backdrop></div>
+	<div class="detail-stage">
+		<figure class="detail-card" data-detail-card>
+			<span class="metadata detail-code" data-detail-code></span>
+			<p class="detail-quote" data-detail-quote></p>
+		</figure>
+		<div class="detail-meta" data-detail-meta>
+			<h2 class="detail-title" data-detail-title></h2>
+			<span class="metadata detail-date" data-detail-date></span>
+			<p class="detail-desc" data-detail-desc></p>
+			<button class="detail-close metadata" data-detail-close>CLOSE ✕</button>
+		</div>
+	</div>
+</div>
+
 <style define:vars={{ cellW: `${CELL_W}px`, cellH: `${CELL_H}px` }}>
 	.gallery-head {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
 		flex-wrap: wrap;
-		gap: 0.5rem 1.5rem;
+		gap: 8px 24px;
 		margin: var(--space-md) 0;
 	}
 
@@ -108,7 +136,6 @@ const copies = [...Array(9).keys()];
 		overflow: hidden;
 		border: 1px solid rgba(255, 255, 255, 0.5);
 		border-radius: var(--radius-md);
-		/* 液態玻璃：半透明 + 背景模糊，透出站點光譜底氣 */
 		background: rgba(240, 242, 245, 0.45);
 		-webkit-backdrop-filter: blur(18px) saturate(1.4);
 		backdrop-filter: blur(18px) saturate(1.4);
@@ -141,10 +168,11 @@ const copies = [...Array(9).keys()];
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
-		padding: 0.9rem 1rem;
+		padding: 12px 16px;
 		background: var(--tone);
 		color: var(--tile-ink);
 		border-radius: var(--radius-sm);
+		cursor: pointer;
 		transition: transform 0.45s var(--ease-spring);
 	}
 
@@ -168,7 +196,7 @@ const copies = [...Array(9).keys()];
 	.tile-caption {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
+		gap: 2px;
 	}
 
 	.tile-title {
@@ -181,11 +209,146 @@ const copies = [...Array(9).keys()];
 		color: inherit;
 		opacity: 0.6;
 	}
+
+	/* —— FLIP 詳情層 —— */
+	.gallery-detail {
+		position: fixed;
+		inset: 0;
+		z-index: 800;
+	}
+	.gallery-detail[hidden] {
+		display: none;
+	}
+
+	.detail-backdrop {
+		position: absolute;
+		inset: 0;
+		background: rgba(248, 249, 250, 0.6);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		backdrop-filter: blur(16px) saturate(1.3);
+		opacity: 0;
+		transition: opacity 0.5s var(--ease-develop);
+	}
+	.gallery-detail.open .detail-backdrop {
+		opacity: 1;
+	}
+
+	.detail-stage {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 24px;
+		padding: var(--space-lg) var(--gutter);
+		pointer-events: none;
+	}
+
+	.detail-card {
+		margin: 0;
+		width: min(560px, 82vw);
+		aspect-ratio: 4 / 3;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		padding: 24px;
+		background: var(--tone, #1a1a1a);
+		color: var(--tile-ink, #f8f9fa);
+		border-radius: var(--radius-md);
+		box-shadow: 0 30px 80px -40px rgba(26, 26, 26, 0.5);
+		transform-origin: top left;
+		will-change: transform;
+	}
+
+	.detail-quote {
+		font-size: 18px;
+		font-style: italic;
+		line-height: 1.5;
+		margin: 0;
+		opacity: 0.92;
+	}
+
+	.detail-meta {
+		width: min(560px, 82vw);
+		pointer-events: auto;
+	}
+	.detail-meta > * {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	.gallery-detail.open .detail-meta > * {
+		animation: meta-in 0.55s var(--ease-develop) forwards;
+	}
+	.gallery-detail.open .detail-title {
+		animation-delay: 0.12s;
+	}
+	.gallery-detail.open .detail-date {
+		animation-delay: 0.2s;
+	}
+	.gallery-detail.open .detail-desc {
+		animation-delay: 0.28s;
+	}
+	.gallery-detail.open .detail-close {
+		animation-delay: 0.36s;
+	}
+
+	@keyframes meta-in {
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	.detail-title {
+		font-size: clamp(1.6rem, 4vw, 2.4rem);
+		font-weight: 600;
+		margin: 0 0 4px;
+	}
+	.detail-date {
+		display: block;
+		margin-bottom: 12px;
+	}
+	.detail-desc {
+		font-size: 16px;
+		line-height: 1.6;
+		color: var(--color-ink-soft);
+		max-width: 52ch;
+		margin: 0 0 16px;
+	}
+	.detail-close {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 8px 16px;
+		border: 1px solid var(--color-line);
+		border-radius: var(--radius-sm);
+		background: none;
+		cursor: pointer;
+		transition: all 0.3s var(--ease-oxide);
+	}
+	.detail-close:hover {
+		color: var(--color-magenta);
+		border-color: var(--color-magenta);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.canvas-tile,
+		.detail-card,
+		.detail-backdrop,
+		.gallery-detail.open .detail-meta > * {
+			transition: none !important;
+			animation: none !important;
+		}
+		.gallery-detail.open .detail-meta > * {
+			opacity: 1;
+			transform: none;
+		}
+	}
 </style>
 
 <script>
-	// 無限循環拖拽：偏移對單元尺寸取模，世界永遠鋪滿視口。
-	// 慣性 + 閒置漂移都經 rAF 節流；減弱動效設置下兩者停用。
+	// 無限循環拖拽 + FLIP 詳情。偏移對單元尺寸取模，世界永遠鋪滿視口。
 	function initInfiniteCanvas() {
 		const viewport = document.querySelector<HTMLElement>('[data-canvas-viewport]');
 		const world = document.querySelector<HTMLElement>('[data-canvas-world]');
@@ -195,44 +358,46 @@ const copies = [...Array(9).keys()];
 		const cellH = world.offsetHeight / 3;
 		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-		let ox = -cellW * 0.3; // 初始偏移：讓第一屏就有錯落的磚
+		let ox = -cellW * 0.3;
 		let oy = -cellH * 0.2;
-		let vx = reduced ? 0 : 0.25; // 閒置漂移速度
+		let vx = reduced ? 0 : 0.25;
 		let vy = reduced ? 0 : 0.12;
 		let dragging = false;
 		let interacted = false;
+		let paused = false; // 詳情打開時暫停漂移
+		let moved = 0; // 拖拽位移量：用於區分點擊 vs 拖拽
 		let lastX = 0;
 		let lastY = 0;
 		let rafId = 0;
 
 		const mod = (v: number, size: number) => ((v % size) + size) % size;
-
 		const render = () => {
 			world.style.transform = `translate3d(${mod(ox, cellW) - cellW}px, ${mod(oy, cellH) - cellH}px, 0)`;
 		};
 
 		const loop = () => {
 			rafId = 0;
-			if (!dragging) {
+			if (!dragging && !paused) {
 				ox += vx;
 				oy += vy;
 				if (interacted) {
-					vx *= 0.94; // 慣性衰減
+					vx *= 0.94;
 					vy *= 0.94;
 				}
 			}
 			render();
 			const coasting = Math.abs(vx) > 0.05 || Math.abs(vy) > 0.05;
-			if (dragging || coasting) wake();
+			if (!paused && (dragging || coasting)) wake();
 		};
-
 		const wake = () => {
-			if (!rafId) rafId = requestAnimationFrame(loop);
+			if (!rafId && !paused) rafId = requestAnimationFrame(loop);
 		};
 
 		viewport.addEventListener('pointerdown', (e) => {
+			if (paused) return;
 			dragging = true;
 			interacted = true;
+			moved = 0;
 			lastX = e.clientX;
 			lastY = e.clientY;
 			vx = 0;
@@ -240,20 +405,19 @@ const copies = [...Array(9).keys()];
 			viewport.setPointerCapture(e.pointerId);
 			wake();
 		});
-
 		viewport.addEventListener('pointermove', (e) => {
 			if (!dragging) return;
 			const dx = e.clientX - lastX;
 			const dy = e.clientY - lastY;
 			lastX = e.clientX;
 			lastY = e.clientY;
+			moved += Math.abs(dx) + Math.abs(dy);
 			ox += dx;
 			oy += dy;
-			vx = reduced ? 0 : dx; // 鬆手時的慣性來自最後一幀速度
+			vx = reduced ? 0 : dx;
 			vy = reduced ? 0 : dy;
 			wake();
 		});
-
 		const release = () => {
 			dragging = false;
 			wake();
@@ -261,10 +425,10 @@ const copies = [...Array(9).keys()];
 		viewport.addEventListener('pointerup', release);
 		viewport.addEventListener('pointercancel', release);
 
-		// 滾輪 / 觸控板：直接平移畫布
 		viewport.addEventListener(
 			'wheel',
 			(e) => {
+				if (paused) return;
 				e.preventDefault();
 				interacted = true;
 				ox -= e.deltaX;
@@ -274,12 +438,107 @@ const copies = [...Array(9).keys()];
 			{ passive: false }
 		);
 
+		// —— FLIP 詳情 ——
+		const detail = document.querySelector<HTMLElement>('[data-detail]');
+		const card = document.querySelector<HTMLElement>('[data-detail-card]');
+		const backdrop = document.querySelector<HTMLElement>('[data-detail-backdrop]');
+		const closeBtn = document.querySelector<HTMLElement>('[data-detail-close]');
+		const elCode = document.querySelector<HTMLElement>('[data-detail-code]');
+		const elQuote = document.querySelector<HTMLElement>('[data-detail-quote]');
+		const elTitle = document.querySelector<HTMLElement>('[data-detail-title]');
+		const elDate = document.querySelector<HTMLElement>('[data-detail-date]');
+		const elDesc = document.querySelector<HTMLElement>('[data-detail-desc]');
+
+		let open = false;
+
+		const openTile = (tile: HTMLElement) => {
+			if (!detail || !card || open) return;
+			open = true;
+			paused = true;
+			cancelAnimationFrame(rafId);
+			rafId = 0;
+
+			const d = tile.dataset;
+			// 填充詳情內容
+			card.style.setProperty('--tone', tile.style.getPropertyValue('--tone'));
+			card.style.setProperty('--tile-ink', tile.style.getPropertyValue('--tile-ink'));
+			if (elCode) elCode.textContent = d.code ?? '';
+			if (elQuote) elQuote.textContent = d.quote ?? '';
+			if (elTitle) elTitle.textContent = d.title ?? '';
+			if (elDate) elDate.textContent = [d.note, d.date].filter(Boolean).join(' · ');
+			if (elDesc) elDesc.textContent = d.desc ?? '';
+
+			// 顯示詳情層並取得目標矩形（Last）
+			detail.hidden = false;
+			card.style.transform = 'none';
+			const last = card.getBoundingClientRect();
+			const first = tile.getBoundingClientRect();
+
+			// FLIP invert：把 card 從目標位置反推回磚的位置
+			const dx = first.left - last.left;
+			const dy = first.top - last.top;
+			const sx = first.width / last.width;
+			const sy = first.height / last.height;
+			card.style.transition = 'none';
+			card.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+			// 強制回流提交起始狀態（比 rAF 穩定，不受背景分頁節流影響）
+			void card.offsetWidth;
+			card.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+			card.style.transform = 'none';
+			detail.classList.add('open');
+		};
+
+		const closeTile = () => {
+			if (!detail || !card || !open) return;
+			const tone = card.style.getPropertyValue('--tone');
+			// 反向 FLIP：回到當前應在的磚位（畫布未動，用最近一次記錄的 originRect）
+			if (originRect) {
+				const last = card.getBoundingClientRect();
+				const dx = originRect.left - last.left;
+				const dy = originRect.top - last.top;
+				const sx = originRect.width / last.width;
+				const sy = originRect.height / last.height;
+				card.style.transition = 'transform 0.55s cubic-bezier(0.4, 0, 0.2, 1)';
+				card.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+			}
+			detail.classList.remove('open');
+			const finish = () => {
+				detail.hidden = true;
+				card.style.transition = 'none';
+				card.style.transform = 'none';
+				open = false;
+				paused = false;
+				wake();
+				card.removeEventListener('transitionend', finish);
+			};
+			card.addEventListener('transitionend', finish);
+			window.setTimeout(finish, 700); // 保險
+			void tone;
+		};
+
+		let originRect: DOMRect | null = null;
+		viewport.addEventListener('click', (e) => {
+			// 拖拽超過閾值視為漫遊，不觸發點擊
+			if (moved > 6) return;
+			const tile = (e.target as Element)?.closest<HTMLElement>('[data-tile]');
+			if (!tile) return;
+			originRect = tile.getBoundingClientRect();
+			openTile(tile);
+		});
+		backdrop?.addEventListener('click', closeTile);
+		closeBtn?.addEventListener('click', closeTile);
+		window.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && open) closeTile();
+		});
+
 		render();
 		wake();
 
-		document.addEventListener('astro:before-swap', () => cancelAnimationFrame(rafId), {
-			once: true,
-		});
+		document.addEventListener(
+			'astro:before-swap',
+			() => cancelAnimationFrame(rafId),
+			{ once: true }
+		);
 	}
 
 	document.addEventListener('astro:page-load', initInfiniteCanvas);
