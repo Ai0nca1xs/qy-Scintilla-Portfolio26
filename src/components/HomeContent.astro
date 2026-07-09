@@ -4,6 +4,7 @@
 import { getCollection } from 'astro:content';
 import SplashIntro from '@/components/SplashIntro.astro';
 import HeroField from '@/components/HeroField.astro';
+import FluidTitle from '@/components/FluidTitle.astro';
 import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -39,12 +40,8 @@ const projectsFor = (cats: readonly string[]) =>
 	</div>
 
 	<div class="hero-core">
-		<div class="hero-title-stack" data-hero-title>
-			{/* 後層：熱力辉光（SVG 濾鏡上色），懸停時被「點燃」 */}
-			<span class="hero-title-glow" aria-hidden="true">SCINTILLA.</span>
-			{/* 前層：黑字，懸停時模糊並褪進白色 */}
-			<h1 class="hero-title title-calx">SCINTILLA<span class="hero-dot">.</span></h1>
-		</div>
+		{/* 真實流體解算驅動的標題（不支援時自動回退為純黑字）*/}
+		<FluidTitle />
 		<div class="metadata hero-meta">{t.home.heroMeta}</div>
 	</div>
 

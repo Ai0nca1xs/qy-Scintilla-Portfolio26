@@ -1,0 +1,71 @@
+---
+// 首頁標題「穩定流體」互動：真實不可壓縮流體解算器驅動。
+// 游標移動 → splat 注入速度場；涡量約束（卷曲感）；散度 + Jacobi 壓力求解（不可壓縮）；
+// 梯度減法得到無散度速度場；用速度場對「靜態文字貼圖」做 UV 偏移採樣（不平流染料，保持可讀）。
+// 觸碰區文字黑→白，邊緣依速度大小散發 藍/品紅/橙/青 四色光暈（色散）。
+// 若 WebGL2 / 浮點紋理不支援或初始化失敗，自動回退為純黑字（.ft-fallback），標題永不開天窗。
+interface Props {
+	text?: string;
+}
+const { text = 'SCINTILLA.' } = Astro.props;
+---
+
+<div class="fluid-title" data-fluid-title data-text={text}>
+	{/* 可訪問 / SEO 用真實標題；視覺由 canvas 呈現 */}
+	<h1 class="ft-fallback"><span class="ft-word">SCINTILLA</span><span class="ft-dot">.</span></h1>
+	<canvas class="ft-canvas" data-fluid-canvas aria-hidden="true"></canvas>
+</div>
+
+<style>
+	.fluid-title {
+		position: relative;
+		display: inline-block;
+	}
+
+	.ft-fallback {
+		font-size: clamp(3.4rem, 14vw, 11rem);
+		font-weight: 700;
+		line-height: 0.95;
+		letter-spacing: 0.02em;
+		margin: 0;
+		color: var(--color-ink);
+	}
+	.ft-dot {
+		color: var(--color-magenta);
+	}
+
+	/* canvas 覆蓋在文字之上；初始隱藏，流體就緒後淡入接管 */
+	.ft-canvas {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
+		transition: opacity 0.5s ease;
+		pointer-events: none;
+	}
+	.fluid-title.ready .ft-canvas {
+		opacity: 1;
+	}
+	/* 流體接管後隱藏 DOM 文字（保留於無障礙樹） */
+	.fluid-title.ready .ft-fallback {
+		visibility: hidden;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ft-canvas {
+			display: none;
+		}
+	}
+</style>
+
+<script>
+	import { initFluidTitle } from '@/scripts/fluid-title';
+	document.addEventListener('astro:page-load', () => {
+		const root = document.querySelector<HTMLElement>('[data-fluid-title]');
+		if (root) initFluidTitle(root);
+	});
+	document.addEventListener('astro:before-swap', () => {
+		window.dispatchEvent(new CustomEvent('fluid-title:destroy'));
+	});
+</script>
