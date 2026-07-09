@@ -53,10 +53,12 @@ const categories = ['GRA', 'SCE', 'INS', 'PRD', 'PHO'] as const;
 	.filter-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 8px;
+		min-height: 44px; /* 移動端點擊熱區 ≥44px */
 		background: none;
 		border: 1px solid rgba(26, 26, 26, 0.15);
-		padding: 0.4rem 0.9rem;
+		border-radius: var(--radius-sm);
+		padding: 8px 16px;
 		cursor: pointer;
 		opacity: 0.6;
 		transition: all 0.4s var(--ease-oxide);

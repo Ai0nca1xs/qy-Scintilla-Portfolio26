@@ -107,7 +107,7 @@ const copies = [...Array(9).keys()];
 		height: max(480px, calc(100svh - 230px));
 		overflow: hidden;
 		border: 1px solid rgba(255, 255, 255, 0.5);
-		border-radius: 10px;
+		border-radius: var(--radius-md);
 		/* 液態玻璃：半透明 + 背景模糊，透出站點光譜底氣 */
 		background: rgba(240, 242, 245, 0.45);
 		-webkit-backdrop-filter: blur(18px) saturate(1.4);
@@ -144,7 +144,7 @@ const copies = [...Array(9).keys()];
 		padding: 0.9rem 1rem;
 		background: var(--tone);
 		color: var(--tile-ink);
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		transition: transform 0.45s var(--ease-spring);
 	}
 
@@ -158,7 +158,7 @@ const copies = [...Array(9).keys()];
 	}
 
 	.tile-quote {
-		font-size: 15px;
+		font-size: 16px;
 		font-style: italic;
 		line-height: 1.6;
 		opacity: 0.92;
@@ -172,7 +172,7 @@ const copies = [...Array(9).keys()];
 	}
 
 	.tile-title {
-		font-size: 17px;
+		font-size: 18px;
 		font-weight: 500;
 		letter-spacing: 0.01em;
 	}

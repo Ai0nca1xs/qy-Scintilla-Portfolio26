@@ -33,3 +33,6 @@ _originals/
 *.psd
 *.ai
 *.indd
+
+# 本地參考 demo（不部署）
+thermal-title-demo.html
