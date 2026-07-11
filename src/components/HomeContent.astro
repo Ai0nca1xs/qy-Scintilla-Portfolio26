@@ -1,6 +1,6 @@
 ---
 // 首頁主體內容，EN / FR 兩個頁面共用，文字全部來自 i18n 詞典。
-// 結構：Hero → 01 Profile（含簡版 CV）→ 02 Practice（三列：定位/領域/細分與作品）→ 03 Gallery
+// 結構：Hero（流體墨水標題）→ 概念句 → 01 Profile → 02 Practice（緊湊三列）→ 03 Gallery
 import { getCollection } from 'astro:content';
 import SplashIntro from '@/components/SplashIntro.astro';
 import HeroField from '@/components/HeroField.astro';
@@ -18,8 +18,6 @@ const localePrefix = lang === 'FR' ? 'fr/' : 'en/';
 const allEntries = (await getCollection('projects', ({ id }) => id.startsWith(localePrefix))).sort(
 	(a, b) => a.data.order - b.data.order
 );
-const totalCount = allEntries.length;
-const year = new Date().getFullYear();
 
 const slugOf = (id: string) => id.replace(/^(en|fr)\//, '');
 const projectsFor = (cats: readonly string[]) =>
@@ -31,41 +29,30 @@ const projectsFor = (cats: readonly string[]) =>
 <section class="hero-section">
 	<HeroField />
 
-	{/* 流體墨水標題：畫布鋪滿整個 hero，游標攪墨、字形積墨顯影 */}
-	<FluidTitle />
+	{/* 流體墨水標題：畫布鋪滿 hero；標題與 meta 句一同積墨顯影 */}
+	<FluidTitle meta={t.home.heroMeta} />
 
-	{/* 實驗室取景框：四角的標本檔案 metadata */}
-	<div class="hero-corners" aria-hidden="true">
-		<span class="metadata corner tl">SCINTILLA — SPECIMEN ARCHIVE</span>
-		<span class="metadata corner tr">N° {String(totalCount).padStart(3, '0')} SPECIMENS</span>
-		<span class="metadata corner bl">44.84°N — 0.58°W</span>
-		<span class="metadata corner br">CAL. {year}</span>
-	</div>
-
-	<div class="hero-core">
-		<div class="metadata hero-meta">{t.home.heroMeta}</div>
-	</div>
-
-	<div class="metadata scroll-hint">SCROLL TO DEVELOP ↓</div>
+	<div class="metadata scroll-hint">Scroll to develop ↓</div>
 </section>
 
+{/* 概念句：引言式 Helvetica Italic，禁止自動換行 */}
 <section class="concept-intro">
 	<p data-type-shuffle>{t.home.concept}</p>
 </section>
 
 <section class="intro-section">
-	<span class="section-label">01 / PROFILE</span>
+	<span class="section-label">01 / Profile</span>
 	<div class="intro-grid">
 		<p class="lead-text" data-text-motion set:html={t.home.introHtml} />
 		<div class="cv-panel">
 			<div class="cv-meta">
 				{t.home.cvMeta.map((line) => <span class="metadata">{line}</span>)}
 			</div>
-			<span class="metadata cv-label">EDUCATION</span>
+			<span class="metadata cv-label">Education</span>
 			<ul class="cv-list">
 				{t.home.cvEducation.map((line) => <li>{line}</li>)}
 			</ul>
-			<span class="metadata cv-label">SELECTED EXPERIENCE</span>
+			<span class="metadata cv-label">Selected experience</span>
 			<ul class="cv-list">
 				{t.home.cvExperience.map((line) => <li>{line}</li>)}
 			</ul>
@@ -76,9 +63,9 @@ const projectsFor = (cats: readonly string[]) =>
 <section class="practice-section">
 	<span class="section-label">02 / {t.home.practiceLabel}</span>
 	<div class="practice-grid">
-		{/* 左列：整個實踐區的「大括號」——個人設計定位 */}
+		{/* 左列：緊湊的定位說明 */}
 		<div class="practice-intro">
-			<p class="practice-lead" data-text-motion set:html={t.home.practiceIntroHtml} />
+			<p class="practice-lead" set:html={t.home.practiceIntroHtml} />
 		</div>
 
 		{/* 中列 + 右列：三大領域及其細分作品 */}
@@ -86,12 +73,7 @@ const projectsFor = (cats: readonly string[]) =>
 			{
 				t.home.domains.map((domain) => (
 					<div class="domain-block">
-						<h2 class="domain-title">
-							{domain.cats.map((cat) => (
-								<span class="index-swatch" data-cat={cat} aria-hidden="true" />
-							))}
-							{domain.title}
-						</h2>
+						<h2 class="domain-title">{domain.title}</h2>
 						<div class="domain-body">
 							<p class="domain-blurb" data-type-shuffle>{domain.blurb}</p>
 							<ol class="domain-projects">
@@ -104,9 +86,7 @@ const projectsFor = (cats: readonly string[]) =>
 											data-cursor-label="VIEW"
 										>
 											<span class="index-title">{entry.data.title}</span>
-											<span class="metadata index-code">
-												{entry.data.code} · {entry.data.year}
-											</span>
+											<span class="caption-mono index-code">{entry.data.year}</span>
 											<span class="index-arrow" aria-hidden="true">
 												↗
 											</span>
@@ -118,7 +98,7 @@ const projectsFor = (cats: readonly string[]) =>
 								class="metadata domain-more"
 								href={`${localizePath(lang, '/project')}?lens=${domain.lens}`}
 							>
-								ALL {domain.title} →
+								All {domain.title} →
 							</a>
 						</div>
 					</div>
@@ -134,69 +114,23 @@ const projectsFor = (cats: readonly string[]) =>
 	<a href={localizePath(lang, '/gallery')} class="title-calx gallery-cta">{t.home.galleryCta}</a>
 </section>
 
-{/* 懸停預覽浮窗：游標移到作品名上時浮出對應的「標本片」 */}
+{/* 懸停預覽：X 固定於列表右側，遮罩沿 Y 軸跟隨游標展開；圖版左上角寫具體 tag */}
 <div class="index-preview" aria-hidden="true">
-	{
-		allEntries.map((entry) => (
-			<figure class="preview-plate" data-plate={slugOf(entry.id)} data-cat={entry.data.category}>
-				<span class="metadata plate-code">{entry.data.code}</span>
-				<span class="plate-title">{entry.data.title}</span>
-			</figure>
-		))
-	}
+	<div class="preview-mask" data-preview-mask>
+		{
+			allEntries.map((entry) => (
+				<figure
+					class="preview-plate"
+					data-plate={slugOf(entry.id)}
+					data-cat={entry.data.category}
+				>
+					<span class="metadata plate-tag">{t.categories[entry.data.category]}</span>
+					<span class="plate-title">{entry.data.title}</span>
+				</figure>
+			))
+		}
+	</div>
 </div>
-
-<!-- hero 標題「放大鏡液態玻璃」SVG 濾鏡：
-     白字 → 平滑液態折射位移 → 柔和光譜光暈（與背景色板呼應）→ 疊回白字。
-     大範圍 filter region 避免裁切；配合 CSS 圓形柔遮罩 + scale 放大形成放大鏡。 -->
-<svg style="display: none;" aria-hidden="true">
-	<defs>
-		<filter
-			id="ignite-filter"
-			x="-120%"
-			y="-120%"
-			width="340%"
-			height="340%"
-			color-interpolation-filters="sRGB"
-		>
-			<!-- 平滑低頻折射：像液態玻璃，而非漣漪水波 -->
-			<feTurbulence
-				type="fractalNoise"
-				baseFrequency="0.006"
-				numOctaves="2"
-				seed="4"
-				result="noise"
-				id="ignite-turb"></feTurbulence>
-			<feDisplacementMap
-				in="SourceGraphic"
-				in2="noise"
-				scale="0"
-				xChannelSelector="R"
-				yChannelSelector="G"
-				id="ignite-disp"
-				result="disp"></feDisplacementMap>
-			<!-- 柔和光暈：由字形擴散，寬度隨互動增大 -->
-			<feGaussianBlur in="disp" stdDeviation="6" id="ignite-blur" result="blur"></feGaussianBlur>
-			<feColorMatrix
-				in="blur"
-				type="matrix"
-				values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0"
-				result="gray"></feColorMatrix>
-			<!-- 柔和光譜（與 HeroField 同色板，透明度壓低不突兀）：藍青 → 洋紅 → 橙 → 黃 -->
-			<feComponentTransfer in="gray" result="halo">
-				<feFuncR type="table" tableValues="0.20 0.30 0.90 1 1 1"></feFuncR>
-				<feFuncG type="table" tableValues="0.60 0.38 0.28 0.52 0.82 0.96"></feFuncG>
-				<feFuncB type="table" tableValues="0.72 0.92 0.76 0.28 0.32 0.48"></feFuncB>
-				<feFuncA type="table" tableValues="0 0.26 0.42 0.56 0.66 0.74"></feFuncA>
-			</feComponentTransfer>
-			<!-- 白字疊回頂層：互動區內是「白字 + 柔和光暈」 -->
-			<feMerge>
-				<feMergeNode in="halo"></feMergeNode>
-				<feMergeNode in="disp"></feMergeNode>
-			</feMerge>
-		</filter>
-	</defs>
-</svg>
 
 <style>
 	/* --- 1. 首屏 (Hero) --- */
@@ -208,104 +142,6 @@ const projectsFor = (cats: readonly string[]) =>
 		justify-content: center;
 		align-items: center;
 		text-align: center;
-	}
-
-	/* hero-core / 取景框 / 提示都疊在光暈層之上 */
-	.hero-core {
-		position: relative;
-		z-index: 1;
-	}
-
-	.hero-corners .corner {
-		position: absolute;
-		z-index: 1;
-		opacity: 0.4;
-	}
-	.corner.tl {
-		top: 1.4rem;
-		left: 0;
-	}
-	.corner.tr {
-		top: 1.4rem;
-		right: 0;
-	}
-	.corner.bl {
-		bottom: 1.4rem;
-		left: 0;
-	}
-	.corner.br {
-		bottom: 1.4rem;
-		right: 0;
-	}
-
-	/* 標題雙層堆疊：前層黑字 + 後層熱力辉光 */
-	.hero-title-stack {
-		position: relative;
-		display: inline-block;
-		margin-bottom: 1.2rem;
-	}
-
-	.hero-title,
-	.hero-title-glow {
-		font-size: clamp(3.4rem, 14vw, 11rem);
-		font-weight: 700;
-		line-height: 0.95;
-		letter-spacing: 0.02em;
-		margin: 0;
-	}
-
-	/* 底層：清晰黑字，恆定可讀 */
-	.hero-title {
-		position: relative;
-		z-index: 1;
-		color: var(--color-ink);
-	}
-
-	/* 上層放大鏡：白字 + 柔和光暈（#ignite-filter），
-	   以跟隨游標的圓形柔遮罩局部顯現，並以游標為原點 scale 放大 → 放大鏡效果。
-	   遮罩邊緣長距離漸隱，白字→黑字、光暈濃→淡平滑銜接，無裁切感。 */
-	.hero-title-glow {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		z-index: 2;
-		color: #ffffff;
-		pointer-events: none;
-		filter: url(#ignite-filter);
-		--lr: 0px; /* 放大鏡半徑，靜止為 0 → 完全隱藏 */
-		--lscale: 1;
-		transform: scale(var(--lscale));
-		transform-origin: var(--mx, 50%) var(--my, 50%);
-		-webkit-mask-image: radial-gradient(
-			circle var(--lr) at var(--mx, 50%) var(--my, 50%),
-			#000 0%,
-			#000 32%,
-			rgba(0, 0, 0, 0.45) 62%,
-			transparent 100%
-		);
-		mask-image: radial-gradient(
-			circle var(--lr) at var(--mx, 50%) var(--my, 50%),
-			#000 0%,
-			#000 32%,
-			rgba(0, 0, 0, 0.45) 62%,
-			transparent 100%
-		);
-		-webkit-mask-repeat: no-repeat;
-		mask-repeat: no-repeat;
-		will-change: transform, mask-position;
-	}
-
-	.hero-dot {
-		color: var(--color-magenta);
-	}
-
-	/* meta 位於畫布繪製的標題下方：以標題字號（同 clamp）推算下沿位置。
-	   hero 為 flex 居中，margin 對最終位置的貢獻折半，故係數取 1.2 ≈ 實際下移 0.6 字高 */
-	.hero-meta {
-		opacity: 0.55;
-		margin-top: calc(clamp(3.4rem, 14vw, 11rem) * 1.2);
 	}
 
 	.scroll-hint {
@@ -334,20 +170,24 @@ const projectsFor = (cats: readonly string[]) =>
 		}
 	}
 
-	/* --- 2. 概念句 --- */
+	/* --- 2. 概念句：引言（18px Helvetica Italic），單行不換行 --- */
 	.concept-intro {
-		max-width: 640px;
 		margin: var(--space-xl) auto;
 		text-align: center;
+		overflow: hidden;
 	}
 
 	.concept-intro p {
-		font-size: 16px;
-		line-height: 1.7;
-		color: var(--color-ink-soft);
+		font-family: var(--font-primary);
+		font-style: italic;
+		font-weight: 300;
+		font-size: clamp(11px, 1.9vw, 18px);
+		line-height: 1.5;
+		white-space: nowrap;
+		color: var(--text-secondary);
 	}
 
-	/* --- 3. Profile：大字自述 + 簡版 CV --- */
+	/* --- 3. Profile：自述 + 簡版 CV --- */
 	.intro-section {
 		margin-bottom: var(--space-xl);
 	}
@@ -359,14 +199,15 @@ const projectsFor = (cats: readonly string[]) =>
 		align-items: start;
 	}
 
-	/* 大字自述：視覺入口 → Roboto Mono，收緊字距 */
+	/* 自述：Helvetica Neue Light，正常字距（修正 Roboto Mono 造成的字距過大）*/
 	.lead-text {
-		font-family: var(--font-title);
-		font-size: clamp(1.5rem, 3vw, 2.3rem);
-		line-height: 1.45;
-		letter-spacing: -0.02em;
-		font-weight: 400;
+		font-family: var(--font-primary);
+		font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+		line-height: 1.55;
+		letter-spacing: 0;
+		font-weight: 300;
 		margin: 0;
+		max-width: 560px;
 	}
 
 	.cv-panel {
@@ -390,98 +231,81 @@ const projectsFor = (cats: readonly string[]) =>
 		list-style: none;
 		padding: 0;
 		margin: 0 0 1.4rem;
+		max-width: 480px;
 	}
 
 	.cv-list li {
-		font-size: 14px;
-		line-height: 1.55;
-		padding: 0.4rem 0;
+		padding: 0.3rem 0;
 		margin: 0;
 		opacity: 0.88;
 	}
 
-	/* --- 4. Practice：三列融合（定位 / 領域 / 細分與作品）--- */
+	/* --- 4. Practice：緊湊三列 --- */
 	.practice-section {
 		margin-bottom: var(--space-xl);
 	}
 
 	.practice-grid {
 		display: grid;
-		grid-template-columns: minmax(0, 3fr) minmax(0, 8fr);
-		gap: var(--space-lg);
+		grid-template-columns: minmax(0, 2fr) minmax(0, 9fr);
+		gap: calc(var(--space-lg) * 1.5);
 		align-items: start;
 	}
 
-	/* 左列「大括號」：吸附跟隨整個區塊 */
+	/* 左列：緊湊定位說明（12px 內文級）*/
 	.practice-intro {
 		position: sticky;
 		top: 90px;
 	}
 
 	.practice-lead {
-		font-family: var(--font-title);
-		font-size: clamp(1.15rem, 1.8vw, 1.5rem);
-		line-height: 1.5;
-		letter-spacing: -0.02em;
-		font-weight: 400;
+		font-size: 12px;
+		line-height: 1.8;
+		font-weight: 300;
+		color: var(--text-secondary);
 		margin: 0;
-		max-width: 34ch;
+		max-width: 26ch;
 	}
 
 	.domain-block {
 		display: grid;
-		grid-template-columns: minmax(0, 3fr) minmax(0, 5fr);
-		gap: var(--space-lg);
+		grid-template-columns: minmax(0, 2fr) minmax(0, 6fr);
+		gap: calc(var(--space-lg) * 1.25);
 		align-items: start;
-		padding: 2rem 0 2.6rem;
+		padding: 1.6rem 0 2.4rem;
 	}
 
+	/* 首個領域塊與左列頂對齊 */
+	.domain-block:first-child {
+		padding-top: 0;
+	}
+
+	/* 領域標題：字號縮小、無色塊，懸浮微位移 */
 	.domain-title {
 		position: sticky;
 		top: 90px;
-		display: flex;
-		align-items: center;
-		gap: 0.7rem;
-		font-size: clamp(1.5rem, 2.4vw, 2.1rem);
-		font-weight: 500;
-		letter-spacing: -0.02em;
+		font-size: 18px;
+		font-weight: 700;
+		letter-spacing: 0;
 		margin: 0;
+		transition: transform 0.4s var(--ease-develop);
 	}
 
-	.index-swatch {
-		flex-shrink: 0;
-		width: 12px;
-		height: 12px;
-	}
-	.index-swatch[data-cat='GRA'] {
-		background: var(--cat-gra);
-	}
-	.index-swatch[data-cat='SCE'] {
-		background: var(--cat-sce);
-	}
-	.index-swatch[data-cat='INS'] {
-		background: var(--cat-ins);
-	}
-	.index-swatch[data-cat='PRD'] {
-		background: var(--cat-prd);
-	}
-	.index-swatch[data-cat='PHO'] {
-		background: var(--cat-pho);
+	.domain-title:hover {
+		transform: translateX(6px);
 	}
 
 	.domain-blurb {
-		font-size: 16px;
-		line-height: 1.7;
-		color: var(--color-ink-soft);
-		max-width: 52ch;
-		margin-bottom: 1.4rem;
+		color: var(--text-secondary);
+		max-width: 400px;
+		margin-bottom: 1.6rem;
 	}
 
 	/* 細分品項：作品行 */
 	.domain-projects {
 		list-style: none;
 		padding: 0;
-		margin: 0 0 1rem;
+		margin: 0 0 1.2rem;
 	}
 
 	.index-row {
@@ -490,18 +314,19 @@ const projectsFor = (cats: readonly string[]) =>
 		grid-template-columns: minmax(0, 1fr) auto auto;
 		align-items: baseline;
 		gap: 1.2rem;
-		padding: 0.9rem 0;
+		padding: 0.8rem 0;
 	}
 
 	.index-title {
-		font-size: clamp(1.25rem, 2.2vw, 1.7rem);
-		font-weight: 400;
+		font-family: var(--font-title);
+		font-size: 18px;
+		font-weight: 500;
 		letter-spacing: -0.01em;
 		transition: transform 0.45s var(--ease-spring);
 	}
 
 	.index-arrow {
-		font-size: 16px;
+		font-size: 12px;
 		opacity: 0.4;
 		transition:
 			transform 0.45s var(--ease-spring),
@@ -558,15 +383,15 @@ const projectsFor = (cats: readonly string[]) =>
 	}
 
 	.gallery-text {
-		font-size: 16px;
-		color: var(--color-ink-soft);
+		color: var(--text-secondary);
 		margin-bottom: 1.2rem;
 	}
 
 	.gallery-cta {
 		font-family: var(--font-title);
 		font-size: clamp(1.6rem, 4.5vw, 3rem);
-		font-weight: 600;
+		font-weight: 700;
+		text-transform: uppercase;
 		letter-spacing: -0.02em;
 		transition:
 			letter-spacing 0.6s var(--ease-oxide),
@@ -579,21 +404,32 @@ const projectsFor = (cats: readonly string[]) =>
 		color: var(--color-accent);
 	}
 
-	/* --- 懸停預覽浮窗（標本片）--- */
+	/* --- 懸停預覽：X 固定、Y 軸跟隨游標的遮罩圖版 --- */
 	.index-preview {
 		position: fixed;
 		top: 0;
-		left: 0;
-		width: clamp(230px, 25vw, 340px);
+		right: calc(var(--gutter) + 4vw);
+		width: clamp(220px, 24vw, 320px);
 		aspect-ratio: 4 / 3;
 		z-index: 9500;
 		pointer-events: none;
-		opacity: 0;
-		transition: opacity 0.35s var(--ease-develop);
 		will-change: transform;
 	}
 
-	.index-preview.visible {
+	/* 遮罩：出現時由中縫向上下展開 */
+	.preview-mask {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		clip-path: inset(48% 0 48% 0);
+		opacity: 0;
+		transition:
+			clip-path 0.55s var(--ease-develop),
+			opacity 0.3s ease;
+	}
+
+	.index-preview.visible .preview-mask {
+		clip-path: inset(0 0 0 0);
 		opacity: 1;
 	}
 
@@ -608,6 +444,7 @@ const projectsFor = (cats: readonly string[]) =>
 		opacity: 0;
 		transition: opacity 0.3s ease;
 		color: rgba(255, 255, 255, 0.94);
+		will-change: transform;
 	}
 
 	.preview-plate.active {
@@ -631,15 +468,18 @@ const projectsFor = (cats: readonly string[]) =>
 		background: var(--cat-pho);
 	}
 
-	.plate-code {
-		opacity: 0.8;
+	/* 左上角具體 tag（Photographie / Installation …），非編碼 */
+	.plate-tag {
+		opacity: 0.85;
 		color: inherit;
 	}
 
 	.plate-title {
-		font-size: 16px;
-		font-weight: 500;
-		letter-spacing: 0.01em;
+		font-family: var(--font-title);
+		font-size: 14px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
 	}
 
 	/* --- 響應式 --- */
@@ -648,6 +488,7 @@ const projectsFor = (cats: readonly string[]) =>
 		.practice-grid,
 		.domain-block {
 			grid-template-columns: 1fr;
+			gap: var(--space-md);
 		}
 
 		.practice-intro,
@@ -663,87 +504,11 @@ const projectsFor = (cats: readonly string[]) =>
 			grid-column: 1;
 			order: 3;
 		}
-
-		.corner.tr,
-		.corner.bl {
-			display: none;
-		}
 	}
 </style>
 
 <script>
-	// hero 標題的「放大鏡液態玻璃」互動：
-	// 游標處浮現一個圓形柔邊放大鏡，區域內白字 + 柔和光暈、平滑液態折射並以游標為原點放大；
-	// 白字→黑字、光暈濃→淡皆平滑漸隱，無裁切。冷卻歸零後 rAF 停機、濾鏡卸下。
-	let animationFrameId: number;
-
-	function initHeroTitle() {
-		const stack = document.querySelector('[data-hero-title]') as HTMLElement | null;
-		const glow = document.querySelector('.hero-title-glow') as HTMLElement | null;
-		const turb = document.querySelector('#ignite-turb');
-		const disp = document.querySelector('#ignite-disp');
-		const blur = document.querySelector('#ignite-blur');
-
-		const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (!stack || !glow || !turb || !disp || !blur || prefersReducedMotion) return;
-		if (!window.matchMedia('(pointer: fine)').matches) return;
-
-		let phase = 0;
-		let radius = 0; // 當前放大鏡半徑
-		let targetRadius = 0; // 目標半徑
-		let mx = 50; // 游標在標題內的百分比位置
-		let my = 50;
-		const MAX_R = 300; // 放大鏡最大半徑（px），放大以避免裁切
-
-		const frame = () => {
-			phase += 0.012; // 極緩慢：液態玻璃緩緩流動，而非漣漪
-			radius += (targetRadius - radius) * 0.1;
-			const k = radius / MAX_R; // 0–1 強度
-
-			// 平滑液態折射：固定低頻、極緩慢起伏，位移隨強度增大（放大鏡的液態感）
-			const fy = (0.006 + Math.sin(phase) * 0.0015).toFixed(4);
-			turb.setAttribute('baseFrequency', `0.006 ${fy}`);
-			disp.setAttribute('scale', (k * 14).toFixed(2));
-			blur.setAttribute('stdDeviation', (2 + k * 10).toFixed(2)); // 光暈擴散寬度
-
-			glow.style.setProperty('--lr', `${radius.toFixed(1)}px`);
-			glow.style.setProperty('--lscale', (1 + k * 0.16).toFixed(3)); // 放大鏡放大倍率
-			glow.style.setProperty('--mx', `${mx.toFixed(2)}%`);
-			glow.style.setProperty('--my', `${my.toFixed(2)}%`);
-
-			if (targetRadius === 0 && radius < 0.5) {
-				radius = 0;
-				disp.setAttribute('scale', '0');
-				blur.setAttribute('stdDeviation', '2');
-				glow.style.setProperty('--lr', '0px');
-				glow.style.setProperty('--lscale', '1');
-				glow.style.willChange = '';
-				cancelAnimationFrame(animationFrameId);
-				return;
-			}
-			animationFrameId = requestAnimationFrame(frame);
-		};
-
-		const track = (e: PointerEvent) => {
-			const r = stack.getBoundingClientRect();
-			mx = ((e.clientX - r.left) / r.width) * 100;
-			my = ((e.clientY - r.top) / r.height) * 100;
-		};
-
-		stack.addEventListener('pointerenter', (e) => {
-			track(e);
-			targetRadius = MAX_R;
-			glow.style.willChange = 'transform, mask-position, filter';
-			cancelAnimationFrame(animationFrameId);
-			frame();
-		});
-		stack.addEventListener('pointermove', track, { passive: true });
-		stack.addEventListener('pointerleave', () => {
-			targetRadius = 0;
-		});
-	}
-
-	// --- 懸停預覽浮窗：柔性跟隨游標，切換對應的標本片 ---
+	// --- 懸停預覽：X 固定，遮罩沿 Y 軸跟隨游標；圖版在遮罩內做輕微反向漂移 ---
 	let previewRafId = 0;
 
 	function initIndexPreview() {
@@ -752,19 +517,22 @@ const projectsFor = (cats: readonly string[]) =>
 		const scope = document.querySelector('[data-preview-scope]');
 		if (!(wrap instanceof HTMLElement) || !scope) return;
 
-		const plates = wrap.querySelectorAll('.preview-plate');
-		let x = 0;
+		const plates = wrap.querySelectorAll<HTMLElement>('.preview-plate');
 		let y = 0;
-		let targetX = 0;
 		let targetY = 0;
 		let shown = false;
+		let activePlate: HTMLElement | null = null;
 
 		const loop = () => {
-			x += (targetX - x) * 0.14;
-			y += (targetY - y) * 0.14;
-			wrap.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-			const settled = Math.abs(targetX - x) < 0.3 && Math.abs(targetY - y) < 0.3;
-			previewRafId = settled ? 0 : requestAnimationFrame(loop);
+			const dy = targetY - y;
+			y += dy * 0.12;
+			wrap.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0)`;
+			// 圖版在遮罩內部的反向漂移：跟隨速度差，形成「圖片在窗口裡滑動」的層次
+			if (activePlate) {
+				const drift = Math.max(-28, Math.min(28, dy * 0.3));
+				activePlate.style.transform = `translate3d(0, ${drift.toFixed(1)}px, 0) scale(1.06)`;
+			}
+			previewRafId = Math.abs(dy) > 0.3 ? requestAnimationFrame(loop) : 0;
 		};
 
 		const wake = () => {
@@ -775,8 +543,7 @@ const projectsFor = (cats: readonly string[]) =>
 			'pointermove',
 			(e) => {
 				const pe = e as PointerEvent;
-				targetX = pe.clientX + 32;
-				targetY = pe.clientY - wrap.offsetHeight - 24;
+				targetY = pe.clientY - wrap.offsetHeight / 2;
 				wake();
 			},
 			{ passive: true }
@@ -786,11 +553,15 @@ const projectsFor = (cats: readonly string[]) =>
 			const row = e.target instanceof Element ? e.target.closest('.index-row') : null;
 			if (!row) return;
 			const slug = row.getAttribute('data-slug');
-			plates.forEach((p) => p.classList.toggle('active', p.getAttribute('data-plate') === slug));
+			plates.forEach((p) => {
+				const on = p.getAttribute('data-plate') === slug;
+				p.classList.toggle('active', on);
+				if (on) activePlate = p;
+			});
 			if (!shown) {
 				shown = true;
-				x = targetX;
-				y = targetY;
+				y = targetY; // 首次出現直接就位，避免長距離滑入
+				wrap.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0)`;
 			}
 			wrap.classList.add('visible');
 		});
@@ -801,13 +572,12 @@ const projectsFor = (cats: readonly string[]) =>
 		});
 	}
 
-	// --- hero 滾動視差：核心層緩速下沉並淡出，取景框保持不動 ---
+	// --- hero 滾動視差：流體墨水舞台緩速下沉並淡出 ---
 	let parallaxRafId = 0;
 
 	function initHeroParallax() {
-		const core = document.querySelector('.hero-core');
 		const stage = document.querySelector('.fluid-stage');
-		if (!(core instanceof HTMLElement)) return;
+		if (!(stage instanceof HTMLElement)) return;
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
 		const update = () => {
@@ -816,15 +586,8 @@ const projectsFor = (cats: readonly string[]) =>
 			const vh = window.innerHeight;
 			if (scrolled > vh) return;
 			const progress = scrolled / vh;
-			const ty = `translateY(${(scrolled * 0.28).toFixed(1)}px)`;
-			const op = Math.max(0, 1 - progress * 1.15).toFixed(3);
-			core.style.transform = ty;
-			core.style.opacity = op;
-			// 流體標題舞台與 core 同步下沉淡出
-			if (stage instanceof HTMLElement) {
-				stage.style.transform = ty;
-				stage.style.opacity = op;
-			}
+			stage.style.transform = `translateY(${(scrolled * 0.28).toFixed(1)}px)`;
+			stage.style.opacity = Math.max(0, 1 - progress * 1.15).toFixed(3);
 		};
 
 		window.addEventListener(
@@ -837,13 +600,11 @@ const projectsFor = (cats: readonly string[]) =>
 	}
 
 	document.addEventListener('astro:page-load', () => {
-		initHeroTitle();
 		initIndexPreview();
 		initHeroParallax();
 	});
 
 	document.addEventListener('astro:before-swap', () => {
-		cancelAnimationFrame(animationFrameId);
 		cancelAnimationFrame(previewRafId);
 		cancelAnimationFrame(parallaxRafId);
 	});

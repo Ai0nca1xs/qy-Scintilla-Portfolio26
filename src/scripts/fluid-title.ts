@@ -186,6 +186,7 @@ export function initFluidTitle(root: HTMLElement) {
 	// 游標事件綁在整個 hero 區（畫布鋪滿 hero，pointer-events 為 none）
 	const heroEl = (root.closest('.hero-section') as HTMLElement) ?? root;
 	const text = root.dataset.text || 'SCINTILLA.';
+	const metaText = root.dataset.meta || '';
 	// 染料色：品牌洋紅相鄰的亮品紅。r 通道取 1（同原 demo）——
 	// splat 注入 1-color 時紅通道為 0，積墨飽和後停在該色系（趨紅）而非發黑
 	const dye = { r: 1.0, g: 0.0, b: 0.49 };
@@ -320,19 +321,31 @@ export function initFluidTitle(root: HTMLElement) {
 
 	const updateTextCanvas = () => {
 		const cs = getComputedStyle(fallback);
+		const titleSize = parseFloat(cs.fontSize) * dpr;
 		textureCtx.filter = 'none';
 		textureCtx.fillStyle = 'black';
 		textureCtx.fillRect(0, 0, textureEl.width, textureEl.height);
-		textureCtx.font = `${cs.fontWeight} ${parseFloat(cs.fontSize) * dpr}px ${cs.fontFamily}`;
 		textureCtx.fillStyle = '#ffffff';
 		textureCtx.textAlign = 'center';
+
+		// 主標題
+		textureCtx.font = `${cs.fontWeight} ${titleSize}px ${cs.fontFamily}`;
 		textureCtx.filter = `blur(${3 * dpr}px)`;
 		const textBox = textureCtx.measureText(text);
-		textureCtx.fillText(
-			text,
-			0.5 * textureEl.width,
-			0.5 * textureEl.height + 0.5 * textBox.actualBoundingBoxAscent
-		);
+		const titleBaseline = 0.5 * textureEl.height + 0.5 * textBox.actualBoundingBoxAscent;
+		textureCtx.fillText(text, 0.5 * textureEl.width, titleBaseline);
+
+		// meta 句（Residue of a thousand burnt eras）：標題下方一行小字，同屬墨水圖層
+		if (metaText) {
+			textureCtx.font = `500 ${Math.max(12 * dpr, titleSize * 0.085)}px ${cs.fontFamily}`;
+			textureCtx.filter = `blur(${dpr}px)`; // 小字用輕模糊，保住可讀性
+			textureCtx.fillText(
+				metaText,
+				0.5 * textureEl.width,
+				titleBaseline + Math.max(30 * dpr, titleSize * 0.28)
+			);
+		}
+
 		GL.activeTexture(GL.TEXTURE0);
 		GL.bindTexture(GL.TEXTURE_2D, canvasTexture);
 		GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, GL.RGBA, GL.UNSIGNED_BYTE, textureEl);
@@ -380,6 +393,7 @@ export function initFluidTitle(root: HTMLElement) {
 	};
 
 	const updatePointer = (relX: number, relY: number) => {
+		if (!Number.isFinite(relX) || !Number.isFinite(relY)) return; // 防合成事件 NaN 污染流場
 		const x = relX * dpr;
 		const y = relY * dpr;
 		pointer.moved = true;

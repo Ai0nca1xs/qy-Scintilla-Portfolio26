@@ -138,8 +138,13 @@ void main() {
 			'pointermove',
 			(e) => {
 				const r = canvas.getBoundingClientRect();
-				mx = (e.clientX - r.left) / r.width;
-				my = (e.clientY - r.top) / r.height;
+				if (!r.width || !r.height) return; // 佈局前的合成事件會產生 0/0=NaN，污染著色器輸出
+				const x = (e.clientX - r.left) / r.width;
+				const y = (e.clientY - r.top) / r.height;
+				if (Number.isFinite(x) && Number.isFinite(y)) {
+					mx = x;
+					my = y;
+				}
 			},
 			{ passive: true }
 		);

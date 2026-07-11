@@ -6,13 +6,15 @@
 // 若 WebGL / 浮點紋理不支援或初始化失敗，保留純黑 DOM 標題（.ft-fallback），永不開天窗。
 interface Props {
 	text?: string;
+	meta?: string;
 }
-const { text = 'SCINTILLA.' } = Astro.props;
+const { text = 'SCINTILLA.', meta = '' } = Astro.props;
 ---
 
-<div class="fluid-stage" data-fluid-title data-text={text}>
+<div class="fluid-stage" data-fluid-title data-text={text} data-meta={meta}>
 	{/* 可訪問 / SEO 用真實標題；流體就緒後隱藏（保留於無障礙樹），視覺由 canvas 積墨顯影 */}
 	<h1 class="ft-fallback"><span class="ft-word">SCINTILLA</span><span class="ft-dot">.</span></h1>
+	{meta && <span class="ft-meta metadata">{meta}</span>}
 	<canvas class="ft-canvas" data-fluid-canvas aria-hidden="true"></canvas>
 </div>
 
@@ -40,6 +42,18 @@ const { text = 'SCINTILLA.' } = Astro.props;
 	}
 	.ft-dot {
 		color: var(--color-magenta);
+	}
+
+	/* meta 句（Residue of a thousand burnt eras）：標題下方，與標題同屬墨水圖層 */
+	.ft-meta {
+		position: absolute;
+		top: calc(50% + clamp(3.4rem, 14vw, 11rem) * 0.62);
+		left: 50%;
+		transform: translateX(-50%);
+		white-space: nowrap;
+	}
+	.fluid-stage.ready .ft-meta {
+		visibility: hidden;
 	}
 
 	.ft-canvas {

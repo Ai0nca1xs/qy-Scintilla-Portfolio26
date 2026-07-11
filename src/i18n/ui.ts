@@ -69,7 +69,7 @@ export const dict: Record<Lang, Dict> = {
 	EN: {
 		site: {
 			title: 'Scintilla',
-			tagline: "Qianyu's digital space — Multidisciplinary designer",
+			tagline: "Qianyu's digital space",
 			description:
 				'Scintilla — the digital space and design archive of Qianyu, multidisciplinary designer.',
 		},
@@ -84,7 +84,7 @@ export const dict: Record<Lang, Dict> = {
 			heroMeta: 'Residue of a thousand burnt eras',
 			concept: 'A physical translation of poetics through light, space, and material.',
 			introHtml:
-				'I am Qianyu, a multidisciplinary designer exploring the boundaries between <strong>Visual Identity</strong>, <strong>Spatial Narrative</strong>, and <strong>Interactive Experience</strong>. My work seeks to capture the <em>scintilla</em>—the subtle, fleeting sparks of conceptual fusion—and solidify them through rigorous design processes.',
+				'I am <span class="hover-bold">Qianyu, a multidisciplinary designer</span> exploring the boundaries between <strong>Visual Identity</strong>, <strong>Spatial Narrative</strong>, and <strong>Interactive Experience</strong>. My work seeks to capture the <em>scintilla</em>—the subtle, fleeting sparks of conceptual fusion—and solidify them through rigorous design processes.',
 			cvEducation: [
 				'2025— · EBABX — École supérieure des beaux-arts de Bordeaux',
 				'2024–25 · Université de Reims — CIEF, French B2',
@@ -130,9 +130,9 @@ export const dict: Record<Lang, Dict> = {
 		project: {
 			pageTitle: 'Projects — Scintilla',
 			heading: 'ARCHIVE / PROJECTS',
-			filterAll: 'ALL',
-			statusInProgress: 'IN PROGRESS',
-			back: '← BACK TO ARCHIVE',
+			filterAll: 'All',
+			statusInProgress: 'In progress',
+			back: '← Back to archive',
 		},
 		categories: {
 			GRA: 'Graphic & Editorial',
@@ -148,18 +148,18 @@ export const dict: Record<Lang, Dict> = {
 		contact: {
 			pageTitle: 'Contact — Scintilla',
 			heading: 'INITIATE TRANSMISSION',
-			email: 'FELICETTEC341A@GMAIL.COM',
+			email: 'felicettec341a@gmail.com',
 			blurbHtml:
 				'Based in Bordeaux, France.<br />Open to internships, freelance opportunities and collaborations.',
 			role: 'Multidisciplinary designer — colour, light & narrative',
 			location: 'Bordeaux, France',
-			cvButton: 'DOWNLOAD CV',
+			cvButton: 'Download CV',
 		},
 	},
 	FR: {
 		site: {
 			title: 'Scintilla',
-			tagline: "L'espace numérique de Qianyu — Designer pluridisciplinaire",
+			tagline: "L'espace numérique de Qianyu",
 			description:
 				"Scintilla — l'espace numérique et l'archive de design de Qianyu, designer pluridisciplinaire.",
 		},
@@ -174,7 +174,7 @@ export const dict: Record<Lang, Dict> = {
 			heroMeta: 'Residue of a thousand burnt eras',
 			concept: "Une traduction physique de la poétique, par la lumière, l'espace et la matière.",
 			introHtml:
-				"Je suis Qianyu, designer pluridisciplinaire explorant les frontières entre <strong>identité visuelle</strong>, <strong>narration spatiale</strong> et <strong>expérience interactive</strong>. Mon travail cherche à capter la <em>scintilla</em> — ces étincelles subtiles et fugaces où les concepts fusionnent — et à les fixer par un processus de design rigoureux.",
+				"Je suis <span class='hover-bold'>Qianyu, designer pluridisciplinaire</span> explorant les frontières entre <strong>identité visuelle</strong>, <strong>narration spatiale</strong> et <strong>expérience interactive</strong>. Mon travail cherche à capter la <em>scintilla</em> — ces étincelles subtiles et fugaces où les concepts fusionnent — et à les fixer par un processus de design rigoureux.",
 			cvEducation: [
 				'2025— · EBABX — École supérieure des beaux-arts de Bordeaux',
 				'2024–25 · Université de Reims — CIEF, français B2',
@@ -220,9 +220,9 @@ export const dict: Record<Lang, Dict> = {
 		project: {
 			pageTitle: 'Projets — Scintilla',
 			heading: 'ARCHIVE / PROJETS',
-			filterAll: 'TOUS',
-			statusInProgress: 'EN COURS',
-			back: '← RETOUR À L’ARCHIVE',
+			filterAll: 'Tous',
+			statusInProgress: 'En cours',
+			back: '← Retour à l’archive',
 		},
 		categories: {
 			GRA: 'Graphique & Éditorial',
@@ -238,12 +238,12 @@ export const dict: Record<Lang, Dict> = {
 		contact: {
 			pageTitle: 'Contact — Scintilla',
 			heading: 'INITIATE TRANSMISSION',
-			email: 'FELICETTEC341A@GMAIL.COM',
+			email: 'felicettec341a@gmail.com',
 			blurbHtml:
 				'Bordeaux, France.<br />Disponible pour stages, missions freelance et collaborations.',
 			role: 'Designer pluridisciplinaire — couleur, lumière & récit',
 			location: 'Bordeaux, France',
-			cvButton: 'TÉLÉCHARGER LE CV',
+			cvButton: 'Télécharger le CV',
 		},
 	},
 };

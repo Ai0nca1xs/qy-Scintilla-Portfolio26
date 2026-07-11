@@ -38,7 +38,7 @@ const plates = [0, 1, 2, 3]
 	.flat()
 	.map((p, i) => ({
 		...p,
-		code: `PLATE ${String(i + 1).padStart(2, '0')}`,
+		code: `Plate ${String(i + 1).padStart(2, '0')}`,
 		// 淡染深淺輪換，同一頁的佔位版有明暗層次
 		mix: [16, 34, 22, 42, 28, 12][i % 6],
 		drift: [1, 1.35, 0.75, 1.2, 0.9, 1.45][i % 6],
@@ -61,15 +61,15 @@ const plates = [0, 1, 2, 3]
 	{d.cover && <Image src={d.cover} alt={d.title} class="detail-cover" width={1800} />}
 
 	<dl class="spec-sheet metadata">
-		{d.medium && <dt>MEDIUM</dt>}
+		{d.medium && <dt>Medium</dt>}
 		{d.medium && <dd>{d.medium}</dd>}
-		{d.materials && <dt>MATERIALS</dt>}
+		{d.materials && <dt>Materials</dt>}
 		{d.materials && <dd>{d.materials}</dd>}
-		{d.dimensions && <dt>DIMENSIONS</dt>}
+		{d.dimensions && <dt>Dimensions</dt>}
 		{d.dimensions && <dd>{d.dimensions}</dd>}
-		{d.exhibitions && <dt>EXHIBITIONS</dt>}
+		{d.exhibitions && <dt>Exhibitions</dt>}
 		{d.exhibitions && <dd>{d.exhibitions.map((e) => <span class="exhibition">{e}</span>)}</dd>}
-		<dt>KEYWORDS</dt>
+		<dt>Keywords</dt>
 		<dd class="tag-chips">
 			{d.tags.map((tag) => <span class="detail-tag" data-cat={d.category}>{tag}</span>)}
 		</dd>
@@ -90,7 +90,7 @@ const plates = [0, 1, 2, 3]
 					style={`--ratio:${p.ratio}; --mix:${p.mix}%;`}
 				>
 					<span class="metadata plate-code">{p.code}</span>
-					<figcaption class="metadata plate-caption">{d.title} · DETAIL</figcaption>
+					<figcaption class="metadata plate-caption">{d.title} · Detail</figcaption>
 				</figure>
 			))
 		}
@@ -121,8 +121,8 @@ const plates = [0, 1, 2, 3]
 	}
 
 	.detail-title {
-		font-size: clamp(2rem, 5vw, 3rem);
-		font-weight: 600;
+		font-size: clamp(2.25rem, 5vw, 3.75rem);
+		font-weight: 700;
 		letter-spacing: -0.02em;
 	}
 
@@ -206,14 +206,13 @@ const plates = [0, 1, 2, 3]
 		display: block;
 	}
 
+	/* 內文窄欄：12px 字體的欄寬鐵律（400–500px） */
 	.prose {
-		max-width: 720px;
+		max-width: 480px;
 		margin: 0 auto;
 	}
 
 	.prose :global(p) {
-		font-size: 16px;
-		line-height: 1.8;
 		margin-bottom: 1.4rem;
 	}
 
@@ -255,11 +254,14 @@ const plates = [0, 1, 2, 3]
 		background: color-mix(in srgb, var(--cat-pho) var(--mix), #ffffff);
 	}
 
+	/* 圖注：Roboto Mono Italic 微型字級（程式碼註解式的技術感） */
 	.plate-code,
 	.plate-caption {
 		position: relative;
 		z-index: 1;
 		opacity: 0.5;
+		font-style: italic;
+		font-size: 10px;
 	}
 
 	/* 排列組合：滿幅 / 高低雙聯 / 錯位寬幅 / 錯層對半 */

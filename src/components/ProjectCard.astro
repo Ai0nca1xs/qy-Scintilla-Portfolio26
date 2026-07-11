@@ -129,9 +129,9 @@ const d = entry.data;
 	.plate-summary {
 		grid-area: summary;
 		align-self: end;
-		max-width: min(52ch, 90%);
-		font-size: 13.5px;
-		line-height: 1.6;
+		max-width: min(420px, 90%);
+		font-size: 12px;
+		line-height: 1.8;
 		margin: 0;
 		opacity: 0.92;
 	}
@@ -146,12 +146,11 @@ const d = entry.data;
 		gap: 0.4rem;
 	}
 
-	/* 純白標籤片：強對比、實驗室標籤氣質 */
+	/* 純白標籤片：強對比、實驗室標籤氣質（首字母大寫 + 寬字距） */
 	.tag {
 		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.1em;
-		text-transform: uppercase;
 		padding: 4px 9px;
 		background: #f8f9fa;
 		color: #1a1a1a;

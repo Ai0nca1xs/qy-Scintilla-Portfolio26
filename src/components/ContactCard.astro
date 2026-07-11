@@ -1,5 +1,5 @@
 ---
-// 名片式聯繫頁主體：懸停微翹、點擊像卡牌一樣正反面翻轉。
+// 名片式聯繫頁主體：懸停時微翹並自動翻面（離開翻回），鍵盤可切換。
 // 卡面圖片就位後自動替換：把設計好的圖放到
 //   src/assets/contact/card-front.(jpg|png)  正面
 //   src/assets/contact/card-back.(jpg|png)   背面
@@ -41,12 +41,12 @@ const backImg = Object.entries(cardImages).find(([path]) => path.includes('card-
 						<Image src={frontImg} alt="HE Qianyu — carte" class="card-img" width={1200} />
 					) : (
 						<>
-							<span class="metadata card-tag">SCINTILLA — CONTACT</span>
+							<span class="metadata card-tag">SCINTILLA — Contact</span>
 							<div class="card-core">
 								<h1 class="card-name">HE QIANYU</h1>
 								<p class="card-role">{t.contact.role}</p>
 							</div>
-							<span class="metadata card-flip-hint">FLIP →</span>
+							<span class="metadata card-flip-hint">Flip →</span>
 							<span class="card-swatch" aria-hidden="true" />
 						</>
 					)
@@ -59,13 +59,13 @@ const backImg = Object.entries(cardImages).find(([path]) => path.includes('card-
 						<Image src={backImg} alt="HE Qianyu — carte (verso)" class="card-img" width={1200} />
 					) : (
 						<>
-							<span class="metadata card-tag back-tag">⌮ SPECIMEN N° 001 — DESIGNER</span>
+							<span class="metadata card-tag back-tag">⌮ Specimen n° 001 — Designer</span>
 							<div class="card-core">
 								<span class="card-mailline">{t.contact.email}</span>
 								<span class="metadata back-meta">{t.contact.location}</span>
 								<span class="metadata back-meta">EN · FR · ZH · JP</span>
 							</div>
-							<span class="metadata card-flip-hint">← BACK</span>
+							<span class="metadata card-flip-hint">← Back</span>
 						</>
 					)
 				}
@@ -250,18 +250,17 @@ const backImg = Object.entries(cardImages).find(([path]) => path.includes('card-
 </style>
 
 <script>
-	// 卡牌翻轉：點擊 / Enter / 空格
+	// 卡牌翻轉：懸浮自動翻面（離開翻回）；鍵盤 Enter / 空格保留無障礙切換
 	function initCardFlip() {
 		const card = document.querySelector('.biz-card');
 		if (!(card instanceof HTMLElement)) return;
 
-		const flip = () => card.classList.toggle('flipped');
-
-		card.addEventListener('click', flip);
+		card.addEventListener('pointerenter', () => card.classList.add('flipped'));
+		card.addEventListener('pointerleave', () => card.classList.remove('flipped'));
 		card.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
 				e.preventDefault();
-				flip();
+				card.classList.toggle('flipped');
 			}
 		});
 	}

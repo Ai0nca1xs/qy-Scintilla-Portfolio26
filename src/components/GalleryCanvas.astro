@@ -72,7 +72,6 @@ const copies = [
 
 <header class="gallery-head">
 	<h1 class="title-calx">{t.gallery.heading}</h1>
-	<p class="metadata">MOVE TO WANDER · CLICK TO OPEN · LOOPS IN ALL DIRECTIONS</p>
 </header>
 
 <div class="canvas-viewport" data-canvas-viewport>
@@ -136,7 +135,7 @@ const copies = [
 			<span class="detail-line" data-detail-matiere></span>
 			<p class="detail-desc" data-detail-desc></p>
 			<span class="detail-year" data-detail-date></span>
-			<button class="detail-close metadata" data-detail-close>CLOSE ✕</button>
+			<button class="detail-close metadata" data-detail-close>Close ✕</button>
 		</div>
 	</div>
 </div>
@@ -152,8 +151,8 @@ const copies = [
 	}
 
 	.gallery-head h1 {
-		font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-		font-weight: 600;
+		font-size: clamp(2.25rem, 5vw, 3.75rem);
+		font-weight: 700;
 		letter-spacing: -0.02em;
 	}
 
@@ -243,12 +242,15 @@ const copies = [
 		color: var(--text-primary);
 	}
 
+	/* 材質 / 簡介 / 年份：Roboto Mono Italic 圖注式 */
 	.cap-line {
 		color: var(--text-secondary);
+		font-style: italic;
 	}
 
 	.cap-year {
 		color: var(--text-muted);
+		font-style: italic;
 	}
 
 	/* —— FLIP 詳情層 —— */
@@ -299,6 +301,11 @@ const copies = [
 		box-shadow: 0 30px 80px -40px rgba(26, 26, 26, 0.5);
 		transform-origin: top left;
 		will-change: transform;
+	}
+
+	.detail-code {
+		color: inherit;
+		opacity: 0.55;
 	}
 
 	.detail-quote {
