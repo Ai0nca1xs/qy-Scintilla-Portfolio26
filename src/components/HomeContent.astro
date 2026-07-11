@@ -31,6 +31,9 @@ const projectsFor = (cats: readonly string[]) =>
 <section class="hero-section">
 	<HeroField />
 
+	{/* 流體墨水標題：畫布鋪滿整個 hero，游標攪墨、字形積墨顯影 */}
+	<FluidTitle />
+
 	{/* 實驗室取景框：四角的標本檔案 metadata */}
 	<div class="hero-corners" aria-hidden="true">
 		<span class="metadata corner tl">SCINTILLA — SPECIMEN ARCHIVE</span>
@@ -40,8 +43,6 @@ const projectsFor = (cats: readonly string[]) =>
 	</div>
 
 	<div class="hero-core">
-		{/* 真實流體解算驅動的標題（不支援時自動回退為純黑字）*/}
-		<FluidTitle />
 		<div class="metadata hero-meta">{t.home.heroMeta}</div>
 	</div>
 
@@ -300,8 +301,11 @@ const projectsFor = (cats: readonly string[]) =>
 		color: var(--color-magenta);
 	}
 
+	/* meta 位於畫布繪製的標題下方：以標題字號（同 clamp）推算下沿位置。
+	   hero 為 flex 居中，margin 對最終位置的貢獻折半，故係數取 1.2 ≈ 實際下移 0.6 字高 */
 	.hero-meta {
 		opacity: 0.55;
+		margin-top: calc(clamp(3.4rem, 14vw, 11rem) * 1.2);
 	}
 
 	.scroll-hint {
@@ -802,6 +806,7 @@ const projectsFor = (cats: readonly string[]) =>
 
 	function initHeroParallax() {
 		const core = document.querySelector('.hero-core');
+		const stage = document.querySelector('.fluid-stage');
 		if (!(core instanceof HTMLElement)) return;
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
@@ -811,8 +816,15 @@ const projectsFor = (cats: readonly string[]) =>
 			const vh = window.innerHeight;
 			if (scrolled > vh) return;
 			const progress = scrolled / vh;
-			core.style.transform = `translateY(${(scrolled * 0.28).toFixed(1)}px)`;
-			core.style.opacity = Math.max(0, 1 - progress * 1.15).toFixed(3);
+			const ty = `translateY(${(scrolled * 0.28).toFixed(1)}px)`;
+			const op = Math.max(0, 1 - progress * 1.15).toFixed(3);
+			core.style.transform = ty;
+			core.style.opacity = op;
+			// 流體標題舞台與 core 同步下沉淡出
+			if (stage instanceof HTMLElement) {
+				stage.style.transform = ty;
+				stage.style.opacity = op;
+			}
 		};
 
 		window.addEventListener(

@@ -1,469 +1,523 @@
-// 標題流體解算器（WebGL2）。真實不可壓縮流體：
-// 自平流 → splat 注入 → 涡量約束 → 散度 → Jacobi 壓力求解 → 梯度減法（無散度）。
-// 用速度場對「靜態文字貼圖」做 UV 偏移採樣（不平流染料，文字保持可讀）。
-// 觸碰區文字黑→白，邊緣依速度大小散發 藍/品紅/橙/青 四色光暈。
-// 任一步驟不支援/失敗 → 回退（不掛載，DOM 標題保留）。
+// 首頁標題「流體墨水」——完整移植自 Ksenia Kondrashova
+// «WebGL Fluid Simulation With Your Text»（codepen.io/ksenia-k/pen/MWMObrY，
+// 基於 Pavel Dobryakov 的 WebGL Fluid Simulation）。
+//
+// 原理：游標移動向速度場與染料場注入 splat → 散度 + 10 次 Jacobi 壓力迭代 +
+// 梯度減法（不可壓縮）→ 平流。文字貼圖參與三處：
+// ① 平流耗散 .96 + .04*text —— 字內墨水不衰減（積墨顯字），字外拖尾快速消散；
+// ② 壓力 +0.2*text —— 字形作為壓力源，墨流沿字形繞行；
+// ③ splat ×(.7+.2*text) —— 字內注入略強。
+// 輸出取反色（1-C）呈白底墨痕；本站改造：輸出帶 alpha（無墨處透明），
+// 透出底層 HeroField 光場；文字用站點標題字體，染料用品牌洋紅。
+// 未互動時沿 Lissajous 軌跡自動巡遊（預覽），首次真實移動後交還游標。
+// WebGL / 浮點紋理不可用時直接返回，由組件保留純黑 DOM 標題（永不開天窗）。
 
-const VERT = `#version 300 es
-in vec2 aPosition;
-out vec2 vUv;
-void main(){ vUv = aPosition * 0.5 + 0.5; gl_Position = vec4(aPosition, 0.0, 1.0); }`;
-
-const ADVECTION = `#version 300 es
+const VERT = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uVelocity; uniform sampler2D uSource;
-uniform vec2 texelSize; uniform float dt; uniform float dissipation;
-void main(){
-  vec2 coord = vUv - dt * texture(uVelocity, vUv).xy * texelSize;
-  o = dissipation * texture(uSource, coord);
+varying vec2 vUv;
+attribute vec2 a_position;
+varying vec2 vL;
+varying vec2 vR;
+varying vec2 vT;
+varying vec2 vB;
+uniform vec2 u_texel;
+
+void main () {
+    vUv = .5 * (a_position + 1.);
+    vL = vUv - vec2(u_texel.x, 0.);
+    vR = vUv + vec2(u_texel.x, 0.);
+    vT = vUv + vec2(0., u_texel.y);
+    vB = vUv - vec2(0., u_texel.y);
+    gl_Position = vec4(a_position, 0., 1.);
 }`;
 
-const SPLAT = `#version 300 es
+const FRAG_ADVECTION = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uTarget; uniform float aspectRatio;
-uniform vec2 point; uniform vec3 color; uniform float radius;
-void main(){
-  vec2 p = vUv - point; p.x *= aspectRatio;
-  vec3 splat = exp(-dot(p, p) / radius) * color;
-  o = vec4(texture(uTarget, vUv).xyz + splat, 1.0);
+precision highp sampler2D;
+varying vec2 vUv;
+uniform sampler2D u_velocity_texture;
+uniform sampler2D u_input_texture;
+uniform vec2 u_texel;
+uniform float u_dt;
+uniform float u_use_text;
+uniform sampler2D u_text_texture;
+
+vec4 bilerp (sampler2D sam, vec2 uv, vec2 tsize) {
+    vec2 st = uv / tsize - 0.5;
+    vec2 iuv = floor(st);
+    vec2 fuv = fract(st);
+    vec4 a = texture2D(sam, (iuv + vec2(0.5, 0.5)) * tsize);
+    vec4 b = texture2D(sam, (iuv + vec2(1.5, 0.5)) * tsize);
+    vec4 c = texture2D(sam, (iuv + vec2(0.5, 1.5)) * tsize);
+    vec4 d = texture2D(sam, (iuv + vec2(1.5, 1.5)) * tsize);
+    return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+}
+
+void main () {
+    vec2 coord = vUv - u_dt * bilerp(u_velocity_texture, vUv, u_texel).xy * u_texel;
+    float text = texture2D(u_text_texture, vec2(vUv.x, 1. - vUv.y)).r;
+    float dissipation = (.96 + text * .04 * u_use_text);
+    gl_FragColor = dissipation * bilerp(u_input_texture, coord, u_texel);
+    gl_FragColor.a = 1.;
 }`;
 
-const CURL = `#version 300 es
+const FRAG_DIVERGENCE = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uVelocity; uniform vec2 texelSize;
-void main(){
-  float L = texture(uVelocity, vUv - vec2(texelSize.x, 0.0)).y;
-  float R = texture(uVelocity, vUv + vec2(texelSize.x, 0.0)).y;
-  float T = texture(uVelocity, vUv + vec2(0.0, texelSize.y)).x;
-  float B = texture(uVelocity, vUv - vec2(0.0, texelSize.y)).x;
-  o = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);
+precision highp sampler2D;
+varying highp vec2 vUv;
+varying highp vec2 vL;
+varying highp vec2 vR;
+varying highp vec2 vT;
+varying highp vec2 vB;
+uniform sampler2D u_velocity_texture;
+
+void main () {
+    float L = texture2D(u_velocity_texture, vL).x;
+    float R = texture2D(u_velocity_texture, vR).x;
+    float T = texture2D(u_velocity_texture, vT).y;
+    float B = texture2D(u_velocity_texture, vB).y;
+    float div = .6 * (R - L + T - B);
+    gl_FragColor = vec4(div, 0., 0., 1.);
 }`;
 
-const VORTICITY = `#version 300 es
+const FRAG_PRESSURE = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uVelocity; uniform sampler2D uCurl;
-uniform vec2 texelSize; uniform float curlAmt; uniform float dt;
-void main(){
-  float L = texture(uCurl, vUv - vec2(texelSize.x, 0.0)).x;
-  float R = texture(uCurl, vUv + vec2(texelSize.x, 0.0)).x;
-  float T = texture(uCurl, vUv + vec2(0.0, texelSize.y)).x;
-  float B = texture(uCurl, vUv - vec2(0.0, texelSize.y)).x;
-  float C = texture(uCurl, vUv).x;
-  vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
-  force /= length(force) + 1e-4;
-  force *= curlAmt * C;
-  force.y *= -1.0;
-  vec2 vel = texture(uVelocity, vUv).xy + force * dt;
-  o = vec4(clamp(vel, -1000.0, 1000.0), 0.0, 1.0);
+precision highp sampler2D;
+varying highp vec2 vUv;
+varying highp vec2 vL;
+varying highp vec2 vR;
+varying highp vec2 vT;
+varying highp vec2 vB;
+uniform sampler2D u_pressure_texture;
+uniform sampler2D u_divergence_texture;
+uniform sampler2D u_text_texture;
+
+void main () {
+    float text = texture2D(u_text_texture, vec2(vUv.x, 1. - vUv.y)).r;
+    float L = texture2D(u_pressure_texture, vL).x;
+    float R = texture2D(u_pressure_texture, vR).x;
+    float T = texture2D(u_pressure_texture, vT).x;
+    float B = texture2D(u_pressure_texture, vB).x;
+    float C = texture2D(u_pressure_texture, vUv).x;
+    float divergence = texture2D(u_divergence_texture, vUv).x;
+    float pressure = (L + R + B + T - divergence) * 0.25;
+    pressure += (.2 * text);
+    gl_FragColor = vec4(pressure, 0., 0., 1.);
 }`;
 
-const DIVERGENCE = `#version 300 es
+const FRAG_GRADIENT_SUBTRACT = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uVelocity; uniform vec2 texelSize;
-void main(){
-  float L = texture(uVelocity, vUv - vec2(texelSize.x, 0.0)).x;
-  float R = texture(uVelocity, vUv + vec2(texelSize.x, 0.0)).x;
-  float T = texture(uVelocity, vUv + vec2(0.0, texelSize.y)).y;
-  float B = texture(uVelocity, vUv - vec2(0.0, texelSize.y)).y;
-  o = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
+precision highp sampler2D;
+varying highp vec2 vUv;
+varying highp vec2 vL;
+varying highp vec2 vR;
+varying highp vec2 vT;
+varying highp vec2 vB;
+uniform sampler2D u_pressure_texture;
+uniform sampler2D u_velocity_texture;
+
+void main () {
+    float L = texture2D(u_pressure_texture, vL).x;
+    float R = texture2D(u_pressure_texture, vR).x;
+    float T = texture2D(u_pressure_texture, vT).x;
+    float B = texture2D(u_pressure_texture, vB).x;
+    vec2 velocity = texture2D(u_velocity_texture, vUv).xy;
+    velocity.xy -= vec2(R - L, T - B);
+    gl_FragColor = vec4(velocity, 0., 1.);
 }`;
 
-const PRESSURE = `#version 300 es
+const FRAG_SPLAT = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uPressure; uniform sampler2D uDivergence; uniform vec2 texelSize;
-void main(){
-  float L = texture(uPressure, vUv - vec2(texelSize.x, 0.0)).x;
-  float R = texture(uPressure, vUv + vec2(texelSize.x, 0.0)).x;
-  float T = texture(uPressure, vUv + vec2(0.0, texelSize.y)).x;
-  float B = texture(uPressure, vUv - vec2(0.0, texelSize.y)).x;
-  float div = texture(uDivergence, vUv).x;
-  o = vec4((L + R + T + B - div) * 0.25, 0.0, 0.0, 1.0);
+precision highp sampler2D;
+varying vec2 vUv;
+uniform sampler2D u_input_texture;
+uniform float u_ratio;
+uniform vec3 u_point_value;
+uniform vec2 u_point;
+uniform float u_point_size;
+uniform sampler2D u_text_texture;
+
+void main () {
+    vec2 p = vUv - u_point.xy;
+    p.x *= u_ratio;
+    vec3 splat = pow(2., -dot(p, p) / u_point_size) * u_point_value;
+    float text = texture2D(u_text_texture, vec2(vUv.x, 1. - vUv.y)).r;
+    splat *= (.7 + .2 * text);
+    vec3 base = texture2D(u_input_texture, vUv).xyz;
+    gl_FragColor = vec4(base + splat, 1.);
 }`;
 
-const GRADIENT = `#version 300 es
+// 輸出：反色（1-C）呈白底墨痕；alpha = 墨量 → 無墨處透明，透出底層光場
+const FRAG_OUTPUT = `
 precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uPressure; uniform sampler2D uVelocity; uniform vec2 texelSize;
-void main(){
-  float L = texture(uPressure, vUv - vec2(texelSize.x, 0.0)).x;
-  float R = texture(uPressure, vUv + vec2(texelSize.x, 0.0)).x;
-  float T = texture(uPressure, vUv + vec2(0.0, texelSize.y)).x;
-  float B = texture(uPressure, vUv - vec2(0.0, texelSize.y)).x;
-  vec2 vel = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
-  o = vec4(vel, 0.0, 1.0);
+precision highp sampler2D;
+varying vec2 vUv;
+uniform sampler2D u_output_texture;
+
+void main () {
+    vec3 C = texture2D(u_output_texture, vUv).rgb;
+    float ink = clamp(max(max(C.r, C.g), C.b), 0., 1.);
+    gl_FragColor = vec4(clamp(vec3(1.) - C, 0., 1.), ink);
 }`;
 
-const DISPLAY = `#version 300 es
-precision highp float;
-in vec2 vUv; out vec4 o;
-uniform sampler2D uText; uniform sampler2D uVelocity;
-uniform float uUvScale; uniform float uDistort;
-void main(){
-  vec2 uv = vUv;
-  vec2 vel = texture(uVelocity, uv).xy;
-  float speed = length(vel);
-  vec2 dir = vel * uUvScale;
-  vec2 tuv = vec2(uv.x, 1.0 - uv.y);          // 文字貼圖 Y 翻轉
-  float tR = texture(uText, tuv + dir * 1.6).g;
-  float tG = texture(uText, tuv).g;
-  float tB = texture(uText, tuv - dir * 1.6).g;
-  float inkR = 1.0 - tR, inkG = 1.0 - tG, inkB = 1.0 - tB;
-  float d = clamp(speed * uDistort, 0.0, 1.0);
-
-  // 墨色：平時黑，觸碰處轉白
-  vec3 inkColor = mix(vec3(0.06), vec3(1.0), d);
-  vec3 rgb = inkColor * inkG;
-
-  // 四色色散光暈（依速度大小）
-  vec3 glow = inkB * vec3(0.12, 0.55, 1.0)                  // 藍
-            + inkR * vec3(0.95, 0.0, 0.45)                  // 品紅
-            + max(inkR - inkG, 0.0) * vec3(1.0, 0.45, 0.0)  // 橙
-            + max(inkB - inkG, 0.0) * vec3(0.15, 0.8, 0.72);// 青
-  rgb += glow * d * 1.5;
-
-  float a = clamp(inkG + (glow.r + glow.g + glow.b) * d * 0.6, 0.0, 1.0);
-  o = vec4(min(rgb, vec3(1.0)), a);
-}`;
-
-type GL = WebGL2RenderingContext;
-interface FBO {
-	tex: WebGLTexture;
+type FBO = {
 	fbo: WebGLFramebuffer;
-	w: number;
-	h: number;
-}
-interface DoubleFBO {
-	read: FBO;
-	write: FBO;
-	swap: () => void;
-}
+	width: number;
+	height: number;
+	attach(id: number): number;
+};
+
+type DoubleFBO = {
+	width: number;
+	height: number;
+	texelSizeX: number;
+	texelSizeY: number;
+	read(): FBO;
+	write(): FBO;
+	swap(): void;
+};
 
 export function initFluidTitle(root: HTMLElement) {
-	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-	const canvas = root.querySelector<HTMLCanvasElement>('[data-fluid-canvas]');
+	const canvasEl = root.querySelector<HTMLCanvasElement>('[data-fluid-canvas]');
 	const fallback = root.querySelector<HTMLElement>('.ft-fallback');
-	if (!canvas || !fallback) return;
+	if (!canvasEl || !fallback) return;
+	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-	const gl = canvas.getContext('webgl2', {
-		alpha: true,
-		premultipliedAlpha: false,
-		antialias: false,
-		depth: false,
-	}) as GL | null;
-	if (!gl || !gl.getExtension('EXT_color_buffer_float')) return; // 不支援 → 回退
+	// 游標事件綁在整個 hero 區（畫布鋪滿 hero，pointer-events 為 none）
+	const heroEl = (root.closest('.hero-section') as HTMLElement) ?? root;
+	const text = root.dataset.text || 'SCINTILLA.';
+	// 染料色：品牌洋紅相鄰的亮品紅。r 通道取 1（同原 demo）——
+	// splat 注入 1-color 時紅通道為 0，積墨飽和後停在該色系（趨紅）而非發黑
+	const dye = { r: 1.0, g: 0.0, b: 0.49 };
 
-	// linear 過濾半浮點（WebGL2 核心支援；float 需擴充）
-	gl.getExtension('OES_texture_float_linear');
+	const textureEl = document.createElement('canvas');
+	const textureCtx = textureEl.getContext('2d');
 
-	const compile = (type: number, src: string) => {
-		const s = gl.createShader(type)!;
-		gl.shaderSource(s, src);
-		gl.compileShader(s);
-		if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-			console.warn('fluid shader:', gl.getShaderInfoLog(s));
-			return null;
+	let gl: WebGLRenderingContext | null = null;
+	try {
+		gl = canvasEl.getContext('webgl', { alpha: true, premultipliedAlpha: false });
+	} catch {
+		return;
+	}
+	if (!gl || !textureCtx) return;
+	if (!gl.getExtension('OES_texture_float')) return; // 浮點紋理不可用 → 保留 DOM 黑字
+
+	const GL = gl;
+
+	const compile = (source: string, type: number) => {
+		const shader = GL.createShader(type)!;
+		GL.shaderSource(shader, source);
+		GL.compileShader(shader);
+		if (!GL.getShaderParameter(shader, GL.COMPILE_STATUS)) {
+			throw new Error(GL.getShaderInfoLog(shader) ?? 'shader compile failed');
 		}
-		return s;
+		return shader;
 	};
-	const makeProgram = (frag: string) => {
-		const vs = compile(gl.VERTEX_SHADER, VERT);
-		const fs = compile(gl.FRAGMENT_SHADER, frag);
-		if (!vs || !fs) return null;
-		const p = gl.createProgram()!;
-		gl.attachShader(p, vs);
-		gl.attachShader(p, fs);
-		gl.bindAttribLocation(p, 0, 'aPosition');
-		gl.linkProgram(p);
-		if (!gl.getProgramParameter(p, gl.LINK_STATUS)) return null;
-		const u: Record<string, WebGLUniformLocation | null> = {};
-		const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
-		for (let i = 0; i < n; i++) {
-			const info = gl.getActiveUniform(p, i)!;
-			u[info.name] = gl.getUniformLocation(p, info.name);
+
+	type Program = { program: WebGLProgram; uniforms: Record<string, WebGLUniformLocation> };
+
+	let vertexShader: WebGLShader;
+	const createProgram = (fragSource: string): Program => {
+		const program = GL.createProgram()!;
+		GL.attachShader(program, vertexShader);
+		GL.attachShader(program, compile(fragSource, GL.FRAGMENT_SHADER));
+		GL.linkProgram(program);
+		if (!GL.getProgramParameter(program, GL.LINK_STATUS)) {
+			throw new Error(GL.getProgramInfoLog(program) ?? 'program link failed');
 		}
-		return { p, u };
+		const uniforms: Record<string, WebGLUniformLocation> = {};
+		const count = GL.getProgramParameter(program, GL.ACTIVE_UNIFORMS);
+		for (let i = 0; i < count; i++) {
+			const name = GL.getActiveUniform(program, i)!.name;
+			uniforms[name] = GL.getUniformLocation(program, name)!;
+		}
+		return { program, uniforms };
 	};
 
-	const progs = {
-		advection: makeProgram(ADVECTION),
-		splat: makeProgram(SPLAT),
-		curl: makeProgram(CURL),
-		vorticity: makeProgram(VORTICITY),
-		divergence: makeProgram(DIVERGENCE),
-		pressure: makeProgram(PRESSURE),
-		gradient: makeProgram(GRADIENT),
-		display: makeProgram(DISPLAY),
-	};
-	if (Object.values(progs).some((x) => !x)) return; // 任一失敗 → 回退
+	let splatProgram: Program;
+	let divergenceProgram: Program;
+	let pressureProgram: Program;
+	let gradientSubtractProgram: Program;
+	let advectionProgram: Program;
+	let outputProgram: Program;
 
-	// 全屏三角形
-	const vao = gl.createVertexArray();
-	gl.bindVertexArray(vao);
-	const buf = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-	gl.enableVertexAttribArray(0);
-	gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+	try {
+		vertexShader = compile(VERT, GL.VERTEX_SHADER);
+		splatProgram = createProgram(FRAG_SPLAT);
+		divergenceProgram = createProgram(FRAG_DIVERGENCE);
+		pressureProgram = createProgram(FRAG_PRESSURE);
+		gradientSubtractProgram = createProgram(FRAG_GRADIENT_SUBTRACT);
+		advectionProgram = createProgram(FRAG_ADVECTION);
+		outputProgram = createProgram(FRAG_OUTPUT);
+	} catch {
+		return;
+	}
 
-	const SIM = 160; // 速度場解析度
-	let simW = SIM;
-	let simH = SIM;
+	GL.bindBuffer(GL.ARRAY_BUFFER, GL.createBuffer());
+	GL.bufferData(GL.ARRAY_BUFFER, new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]), GL.STATIC_DRAW);
+	GL.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, GL.createBuffer());
+	GL.bufferData(GL.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), GL.STATIC_DRAW);
+	GL.vertexAttribPointer(0, 2, GL.FLOAT, false, 0, 0);
+	GL.enableVertexAttribArray(0);
 
-	const createFBO = (w: number, h: number, internal: number, format: number): FBO => {
-		const tex = gl.createTexture()!;
-		gl.bindTexture(gl.TEXTURE_2D, tex);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, gl.HALF_FLOAT, null);
-		const fbo = gl.createFramebuffer()!;
-		gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-		gl.viewport(0, 0, w, h);
-		gl.clear(gl.COLOR_BUFFER_BIT);
-		return { tex, fbo, w, h };
-	};
-	const createDouble = (w: number, h: number, internal: number, format: number): DoubleFBO => {
-		let read = createFBO(w, h, internal, format);
-		let write = createFBO(w, h, internal, format);
+	// —— FBO（全部 RGBA float：WebGL1 無 RG 格式，RGB float 可渲染性無保證）——
+	const createFBO = (w: number, h: number): FBO => {
+		GL.activeTexture(GL.TEXTURE0);
+		const texture = GL.createTexture()!;
+		GL.bindTexture(GL.TEXTURE_2D, texture);
+		GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+		GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+		GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+		GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
+		GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, w, h, 0, GL.RGBA, GL.FLOAT, null);
+		const fbo = GL.createFramebuffer()!;
+		GL.bindFramebuffer(GL.FRAMEBUFFER, fbo);
+		GL.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, texture, 0);
+		if (GL.checkFramebufferStatus(GL.FRAMEBUFFER) !== GL.FRAMEBUFFER_COMPLETE) {
+			throw new Error('float framebuffer unsupported');
+		}
+		GL.viewport(0, 0, w, h);
+		GL.clear(GL.COLOR_BUFFER_BIT);
 		return {
-			get read() {
-				return read;
+			fbo,
+			width: w,
+			height: h,
+			attach(id: number) {
+				GL.activeTexture(GL.TEXTURE0 + id);
+				GL.bindTexture(GL.TEXTURE_2D, texture);
+				return id;
 			},
-			get write() {
-				return write;
-			},
+		};
+	};
+
+	const createDoubleFBO = (w: number, h: number): DoubleFBO => {
+		let fbo1 = createFBO(w, h);
+		let fbo2 = createFBO(w, h);
+		return {
+			width: w,
+			height: h,
+			texelSizeX: 1 / w,
+			texelSizeY: 1 / h,
+			read: () => fbo1,
+			write: () => fbo2,
 			swap() {
-				const t = read;
-				read = write;
-				write = t;
+				const t = fbo1;
+				fbo1 = fbo2;
+				fbo2 = t;
 			},
-		} as unknown as DoubleFBO;
+		};
 	};
 
-	const RG16F = gl.RG16F;
-	const R16F = gl.R16F;
-	let velocity = createDouble(simW, simH, RG16F, gl.RG);
-	let divergence = createFBO(simW, simH, R16F, gl.RED);
-	let curl = createFBO(simW, simH, R16F, gl.RED);
-	let pressure = createDouble(simW, simH, R16F, gl.RED);
+	// —— 文字貼圖：站點標題字體（Roboto Mono）白字黑底 + 輕微模糊軟化邊緣 ——
+	const canvasTexture = GL.createTexture()!;
+	GL.bindTexture(GL.TEXTURE_2D, canvasTexture);
+	GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+	GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+	GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+	GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
 
-	// —— 文字貼圖：把 SCINTILLA. 畫到 2D canvas → 上傳為貼圖 ——
-	const textTex = gl.createTexture()!;
-	const textCanvas = document.createElement('canvas');
-	const tctx = textCanvas.getContext('2d')!;
+	const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
 
-	const drawText = (w: number, h: number) => {
-		const dpr = Math.min(window.devicePixelRatio || 1, 2);
-		textCanvas.width = Math.max(2, Math.floor(w * dpr));
-		textCanvas.height = Math.max(2, Math.floor(h * dpr));
+	const updateTextCanvas = () => {
 		const cs = getComputedStyle(fallback);
-		tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-		tctx.clearRect(0, 0, w, h);
-		tctx.fillStyle = '#ffffff';
-		tctx.fillRect(0, 0, w, h);
-		tctx.fillStyle = '#000000';
-		tctx.textAlign = 'center';
-		tctx.textBaseline = 'middle';
-		const fs = parseFloat(cs.fontSize);
-		tctx.font = `${cs.fontWeight} ${fs}px ${cs.fontFamily}`;
-		(tctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '0.02em';
-		tctx.fillText(root.dataset.text || 'SCINTILLA.', w / 2, h / 2 + fs * 0.02);
-		gl.bindTexture(gl.TEXTURE_2D, textTex);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
+		textureCtx.filter = 'none';
+		textureCtx.fillStyle = 'black';
+		textureCtx.fillRect(0, 0, textureEl.width, textureEl.height);
+		textureCtx.font = `${cs.fontWeight} ${parseFloat(cs.fontSize) * dpr}px ${cs.fontFamily}`;
+		textureCtx.fillStyle = '#ffffff';
+		textureCtx.textAlign = 'center';
+		textureCtx.filter = `blur(${3 * dpr}px)`;
+		const textBox = textureCtx.measureText(text);
+		textureCtx.fillText(
+			text,
+			0.5 * textureEl.width,
+			0.5 * textureEl.height + 0.5 * textBox.actualBoundingBoxAscent
+		);
+		GL.activeTexture(GL.TEXTURE0);
+		GL.bindTexture(GL.TEXTURE_2D, canvasTexture);
+		GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, GL.RGBA, GL.UNSIGNED_BYTE, textureEl);
 	};
 
-	let dispW = 0;
-	let dispH = 0;
-	const resize = () => {
-		const rect = root.getBoundingClientRect();
-		const dpr = Math.min(window.devicePixelRatio || 1, 2);
-		dispW = Math.max(2, Math.floor(rect.width * dpr));
-		dispH = Math.max(2, Math.floor(rect.height * dpr));
-		canvas.width = dispW;
-		canvas.height = dispH;
-		drawText(rect.width, rect.height);
+	// —— 狀態 ——
+	let outputColor: DoubleFBO;
+	let velocity: DoubleFBO;
+	let divergence: FBO;
+	let pressure: DoubleFBO;
+	let pointerSize = 0.005;
+	let isPreview = true; // 首次真實移動前沿軌跡自動巡遊
+	const pointer = { x: 0, y: 0, dx: 0, dy: 0, moved: false };
+	let rafId = 0;
+	let destroyed = false;
+
+	const initFBOs = () => {
+		const w = Math.max(64, Math.floor(0.5 * heroEl.clientWidth));
+		const h = Math.max(64, Math.floor(0.5 * heroEl.clientHeight));
+		outputColor = createDoubleFBO(w, h);
+		velocity = createDoubleFBO(w, h);
+		divergence = createFBO(w, h);
+		pressure = createDoubleFBO(w, h);
 	};
-	resize();
+
+	const resizeCanvas = () => {
+		const w = heroEl.clientWidth;
+		const h = heroEl.clientHeight;
+		pointerSize = 4 / h;
+		canvasEl.width = textureEl.width = Math.floor(w * dpr);
+		canvasEl.height = textureEl.height = Math.floor(h * dpr);
+		initFBOs();
+		updateTextCanvas();
+	};
 
 	const blit = (target: FBO | null) => {
-		if (target) {
-			gl.viewport(0, 0, target.w, target.h);
-			gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+		if (target === null) {
+			GL.viewport(0, 0, GL.drawingBufferWidth, GL.drawingBufferHeight);
+			GL.bindFramebuffer(GL.FRAMEBUFFER, null);
 		} else {
-			gl.viewport(0, 0, dispW, dispH);
-			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+			GL.viewport(0, 0, target.width, target.height);
+			GL.bindFramebuffer(GL.FRAMEBUFFER, target.fbo);
 		}
-		gl.drawArrays(gl.TRIANGLES, 0, 3);
-	};
-	const use = (prog: { p: WebGLProgram; u: Record<string, WebGLUniformLocation | null> }) => {
-		gl.useProgram(prog.p);
-		return prog.u;
-	};
-	const bindTex = (u: WebGLUniformLocation | null, tex: WebGLTexture, unit: number) => {
-		gl.activeTexture(gl.TEXTURE0 + unit);
-		gl.bindTexture(gl.TEXTURE_2D, tex);
-		gl.uniform1i(u, unit);
+		GL.drawElements(GL.TRIANGLES, 6, GL.UNSIGNED_SHORT, 0);
 	};
 
-	const texel: [number, number] = [1 / simW, 1 / simH];
-	const dt = 0.016;
-
-	// —— 指針 → splat ——
-	const pointer = { x: 0, y: 0, dx: 0, dy: 0, moved: false, down: false };
-	const onMove = (e: PointerEvent) => {
-		const rect = root.getBoundingClientRect();
-		const x = (e.clientX - rect.left) / rect.width;
-		const y = (e.clientY - rect.top) / rect.height;
-		pointer.dx = (x - pointer.x) * 6;
-		pointer.dy = (y - pointer.y) * 6;
+	const updatePointer = (relX: number, relY: number) => {
+		const x = relX * dpr;
+		const y = relY * dpr;
+		pointer.moved = true;
+		pointer.dx = 5 * (x - pointer.x);
+		pointer.dy = 5 * (y - pointer.y);
 		pointer.x = x;
 		pointer.y = y;
-		pointer.moved = true;
-	};
-	// 監聽整個 hero 區域，游標像球一樣掃過文字
-	const hero = root.closest('.hero-section') || root;
-	hero.addEventListener('pointermove', onMove as EventListener, { passive: true });
-
-	const splat = (x: number, y: number, dx: number, dy: number) => {
-		const u = use(progs.splat!);
-		bindTex(u.uTarget, velocity.read.tex, 0);
-		gl.uniform1f(u.aspectRatio, simW / simH);
-		gl.uniform2f(u.point, x, y);
-		gl.uniform3f(u.color, dx, dy, 0);
-		gl.uniform1f(u.radius, 0.0002);
-		blit(velocity.write);
-		velocity.swap();
 	};
 
-	let rafId = 0;
-	let running = true;
+	const render = (t?: number) => {
+		if (destroyed) return;
+		const dt = 1 / 60;
 
-	const step = () => {
-		gl.disable(gl.BLEND);
-		// 1. 平流速度場（自平流）
-		let u = use(progs.advection!);
-		gl.uniform2f(u.texelSize, texel[0], texel[1]);
-		bindTex(u.uVelocity, velocity.read.tex, 0);
-		bindTex(u.uSource, velocity.read.tex, 1);
-		gl.uniform1f(u.dt, dt);
-		gl.uniform1f(u.dissipation, 0.992);
-		blit(velocity.write);
-		velocity.swap();
-
-		// 2. splat 注入（游標移動量 → 力）
-		if (pointer.moved && (Math.abs(pointer.dx) > 0 || Math.abs(pointer.dy) > 0)) {
-			splat(pointer.x, 1 - pointer.y, pointer.dx, -pointer.dy);
-			pointer.moved = false;
-			pointer.dx = 0;
-			pointer.dy = 0;
+		// 未互動時的自動巡遊（原 demo 的 Lissajous 預覽軌跡）
+		if (t && isPreview) {
+			updatePointer(
+				(0.5 - 0.45 * Math.sin(0.003 * t - 2)) * heroEl.clientWidth,
+				(0.5 + 0.1 * Math.sin(0.0025 * t) + 0.1 * Math.cos(0.002 * t)) * heroEl.clientHeight
+			);
 		}
 
-		// 3. 涡量約束
-		u = use(progs.curl!);
-		gl.uniform2f(u.texelSize, texel[0], texel[1]);
-		bindTex(u.uVelocity, velocity.read.tex, 0);
-		blit(curl);
-		u = use(progs.vorticity!);
-		gl.uniform2f(u.texelSize, texel[0], texel[1]);
-		bindTex(u.uVelocity, velocity.read.tex, 0);
-		bindTex(u.uCurl, curl.tex, 1);
-		gl.uniform1f(u.curlAmt, 26);
-		gl.uniform1f(u.dt, dt);
-		blit(velocity.write);
-		velocity.swap();
+		if (pointer.moved) {
+			if (!isPreview) pointer.moved = false;
 
-		// 4. 散度
-		u = use(progs.divergence!);
-		gl.uniform2f(u.texelSize, texel[0], texel[1]);
-		bindTex(u.uVelocity, velocity.read.tex, 0);
+			// 速度場 splat
+			GL.useProgram(splatProgram.program);
+			GL.uniform1i(splatProgram.uniforms.u_text_texture, 0);
+			GL.uniform1i(splatProgram.uniforms.u_input_texture, velocity.read().attach(1));
+			GL.uniform1f(splatProgram.uniforms.u_ratio, canvasEl.width / canvasEl.height);
+			GL.uniform2f(
+				splatProgram.uniforms.u_point,
+				pointer.x / canvasEl.width,
+				1 - pointer.y / canvasEl.height
+			);
+			GL.uniform3f(splatProgram.uniforms.u_point_value, pointer.dx, -pointer.dy, 1);
+			GL.uniform1f(splatProgram.uniforms.u_point_size, pointerSize);
+			blit(velocity.write());
+			velocity.swap();
+
+			// 染料場 splat（注入 1-color，輸出反色後即品牌色）
+			GL.uniform1i(splatProgram.uniforms.u_input_texture, outputColor.read().attach(1));
+			GL.uniform3f(splatProgram.uniforms.u_point_value, 1 - dye.r, 1 - dye.g, 1 - dye.b);
+			blit(outputColor.write());
+			outputColor.swap();
+		}
+
+		GL.useProgram(divergenceProgram.program);
+		GL.uniform2f(divergenceProgram.uniforms.u_texel, velocity.texelSizeX, velocity.texelSizeY);
+		GL.uniform1i(divergenceProgram.uniforms.u_velocity_texture, velocity.read().attach(1));
 		blit(divergence);
 
-		// 5. 壓力 Jacobi 迭代
-		u = use(progs.pressure!);
-		gl.uniform2f(u.texelSize, texel[0], texel[1]);
-		bindTex(u.uDivergence, divergence.tex, 1);
-		for (let i = 0; i < 20; i++) {
-			bindTex(u.uPressure, pressure.read.tex, 0);
-			blit(pressure.write);
+		GL.useProgram(pressureProgram.program);
+		GL.uniform1i(pressureProgram.uniforms.u_text_texture, 0);
+		GL.uniform2f(pressureProgram.uniforms.u_texel, velocity.texelSizeX, velocity.texelSizeY);
+		GL.uniform1i(pressureProgram.uniforms.u_divergence_texture, divergence.attach(1));
+		for (let i = 0; i < 10; i++) {
+			GL.uniform1i(pressureProgram.uniforms.u_pressure_texture, pressure.read().attach(2));
+			blit(pressure.write());
 			pressure.swap();
 		}
 
-		// 6. 梯度減法 → 無散度
-		u = use(progs.gradient!);
-		gl.uniform2f(u.texelSize, texel[0], texel[1]);
-		bindTex(u.uPressure, pressure.read.tex, 0);
-		bindTex(u.uVelocity, velocity.read.tex, 1);
-		blit(velocity.write);
+		GL.useProgram(gradientSubtractProgram.program);
+		GL.uniform2f(
+			gradientSubtractProgram.uniforms.u_texel,
+			velocity.texelSizeX,
+			velocity.texelSizeY
+		);
+		GL.uniform1i(gradientSubtractProgram.uniforms.u_pressure_texture, pressure.read().attach(1));
+		GL.uniform1i(gradientSubtractProgram.uniforms.u_velocity_texture, velocity.read().attach(2));
+		blit(velocity.write());
 		velocity.swap();
 
-		// 7. 顯示：速度場對文字貼圖做 UV 偏移採樣 + 色散光暈
-		u = use(progs.display!);
-		bindTex(u.uText, textTex, 0);
-		bindTex(u.uVelocity, velocity.read.tex, 1);
-		gl.uniform1f(u.uUvScale, 0.7);
-		gl.uniform1f(u.uDistort, 3.4);
-		gl.enable(gl.BLEND);
-		gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied-ish over transparent
-		gl.clearColor(0, 0, 0, 0);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		gl.viewport(0, 0, dispW, dispH);
-		gl.clear(gl.COLOR_BUFFER_BIT);
+		// 平流速度場（不受文字耗散影響）
+		GL.useProgram(advectionProgram.program);
+		GL.uniform1i(advectionProgram.uniforms.u_text_texture, 0);
+		GL.uniform1f(advectionProgram.uniforms.u_use_text, 0);
+		GL.uniform2f(advectionProgram.uniforms.u_texel, velocity.texelSizeX, velocity.texelSizeY);
+		GL.uniform1i(advectionProgram.uniforms.u_velocity_texture, velocity.read().attach(1));
+		GL.uniform1i(advectionProgram.uniforms.u_input_texture, velocity.read().attach(1));
+		GL.uniform1f(advectionProgram.uniforms.u_dt, dt);
+		blit(velocity.write());
+		velocity.swap();
+
+		// 平流染料場（字內不衰減 → 積墨顯字）
+		GL.uniform1f(advectionProgram.uniforms.u_use_text, 1);
+		GL.uniform2f(advectionProgram.uniforms.u_texel, outputColor.texelSizeX, outputColor.texelSizeY);
+		GL.uniform1i(advectionProgram.uniforms.u_input_texture, outputColor.read().attach(2));
+		blit(outputColor.write());
+		outputColor.swap();
+
+		// 反色 + alpha 輸出到畫布
+		GL.useProgram(outputProgram.program);
+		GL.uniform1i(outputProgram.uniforms.u_output_texture, outputColor.read().attach(1));
 		blit(null);
+
+		rafId = requestAnimationFrame(render);
 	};
 
-	const frame = () => {
-		if (!running) return;
-		step();
-		rafId = requestAnimationFrame(frame);
+	// —— 事件 ——
+	const onMouseMove = (e: MouseEvent) => {
+		isPreview = false;
+		const r = heroEl.getBoundingClientRect();
+		updatePointer(e.clientX - r.left, e.clientY - r.top);
 	};
-
-	root.classList.add('ready');
-	frame();
-
-	// 視口外暫停
-	const io = new IntersectionObserver(
-		([e]) => {
-			running = e.isIntersecting;
-			if (running && !rafId) frame();
-			if (!running) {
-				cancelAnimationFrame(rafId);
-				rafId = 0;
-			}
-		},
-		{ threshold: 0 }
-	);
-	io.observe(canvas);
-
-	let rt: number | undefined;
+	const onTouchMove = (e: TouchEvent) => {
+		isPreview = false;
+		const r = heroEl.getBoundingClientRect();
+		updatePointer(e.targetTouches[0].clientX - r.left, e.targetTouches[0].clientY - r.top);
+	};
 	const onResize = () => {
-		clearTimeout(rt);
-		rt = window.setTimeout(resize, 150);
+		try {
+			resizeCanvas();
+		} catch {
+			destroy();
+		}
 	};
-	window.addEventListener('resize', onResize);
 
-	const destroy = () => {
-		running = false;
+	function destroy() {
+		if (destroyed) return;
+		destroyed = true;
 		cancelAnimationFrame(rafId);
-		io.disconnect();
+		heroEl.removeEventListener('mousemove', onMouseMove);
+		heroEl.removeEventListener('touchmove', onTouchMove);
 		window.removeEventListener('resize', onResize);
-		hero.removeEventListener('pointermove', onMove as EventListener);
-		const ext = gl.getExtension('WEBGL_lose_context');
-		ext?.loseContext();
-	};
+		root.classList.remove('ready');
+	}
+
+	try {
+		resizeCanvas();
+	} catch {
+		return; // 浮點 FBO 不可渲染 → 保留 DOM 黑字
+	}
+
+	heroEl.addEventListener('mousemove', onMouseMove);
+	heroEl.addEventListener('touchmove', onTouchMove, { passive: true });
+	window.addEventListener('resize', onResize);
 	window.addEventListener('fluid-title:destroy', destroy, { once: true });
 
-	// 暴露測試鉤子
-	(root as HTMLElement & { __fluidSplat?: typeof splat }).__fluidSplat = splat;
+	root.classList.add('ready');
+	rafId = requestAnimationFrame(render);
 }
