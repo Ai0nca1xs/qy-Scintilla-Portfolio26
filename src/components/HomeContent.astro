@@ -124,7 +124,7 @@ const projectsFor = (cats: readonly string[]) =>
 					data-plate={slugOf(entry.id)}
 					data-cat={entry.data.category}
 				>
-					<span class="metadata plate-tag">{t.categories[entry.data.category]}</span>
+					<span class="metadata plate-tag">{t.categoriesShort[entry.data.category]}</span>
 					<span class="plate-title">{entry.data.title}</span>
 				</figure>
 			))

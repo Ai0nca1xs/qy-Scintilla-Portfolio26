@@ -44,7 +44,7 @@ const categories = ['GRA', 'SCE', 'INS', 'PRD', 'PHO'] as const;
 		categories.map((cat) => (
 			<button class="filter-btn metadata" data-filter={cat}>
 				<span class="filter-dot" data-cat={cat} aria-hidden="true" />
-				{t.categories[cat]}
+				{t.categoriesShort[cat]}
 			</button>
 		))
 	}
@@ -127,7 +127,7 @@ const categories = ['GRA', 'SCE', 'INS', 'PRD', 'PHO'] as const;
 	}
 
 	.plate-stack :global([data-category]) {
-		animation: card-develop 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+		animation: card-develop 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 	}
 
 	@keyframes card-develop {
@@ -140,6 +140,12 @@ const categories = ['GRA', 'SCE', 'INS', 'PRD', 'PHO'] as const;
 			opacity: 1;
 			filter: blur(0);
 			transform: translateY(0);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.plate-stack :global([data-category]) {
+			animation: none;
 		}
 	}
 </style>

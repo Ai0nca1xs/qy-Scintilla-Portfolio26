@@ -141,9 +141,11 @@ const navItems = [
 		display: flex;
 	}
 
-	/* 純漸變色塊（無盒結構、無光暈框）：懸浮變淡，選中變色 + 邊緣擴散 */
+	/* 鵝蛋形柔光：按鈕本體無框無底，漸變畫在 ::before 橢圓上並模糊邊緣——
+	   看起來是一團蛋形的光暈，而非盒子。文字全大寫。 */
 	.nav-btn {
 		--btn-anim: 0.55s;
+		position: relative;
 		height: var(--btn-height);
 		width: 100px;
 		display: inline-flex;
@@ -151,34 +153,47 @@ const navItems = [
 		align-items: center;
 		cursor: pointer;
 		font-family: var(--font-mono);
-		font-size: 14px;
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 		color: #403096;
 		border: none;
-		border-radius: 0px;
-		background: radial-gradient(circle at 50% 50%, #ffbad5 20%, #ffffff 80%);
-		transition: 500ms;
+		background: none;
 	}
 
-	/* 懸浮：整體顏色變淡 */
-	.nav-btn:hover {
-		opacity: 0.6;
-		transition: 500ms;
+	.nav-btn::before {
+		content: '';
+		position: absolute;
+		inset: -4px -6px;
+		border-radius: 50%;
+		background: radial-gradient(closest-side, #ffbad5 30%, rgba(255, 255, 255, 0) 100%);
+		filter: blur(5px);
+		transition:
+			opacity 0.5s ease,
+			background 0.3s ease,
+			box-shadow 0.5s ease;
 	}
 
-	/* 點擊 / 當前選中：顏色變化 + 邊緣向外擴散的柔光 */
-	.nav-btn:active {
+	/* 懸浮：光暈變淡 */
+	.nav-btn:hover::before {
+		opacity: 0.45;
+	}
+
+	/* 點擊 / 當前選中：顏色變化 + 邊緣向外擴散 */
+	.nav-btn:active::before,
+	.nav-btn.current::before {
 		opacity: 1;
-		background: radial-gradient(circle at 50% 50%, #ff9dbe 10%, #ffe3ee 85%);
-		box-shadow: 0 0 22px 6px rgba(255, 0, 72, 0.28);
-		color: var(--color-accent);
-		transition: 100ms;
+		background: radial-gradient(closest-side, #ff9dbe 24%, rgba(255, 227, 238, 0) 100%);
+		box-shadow: 0 0 26px 10px rgba(255, 0, 72, 0.22);
 	}
-
+	.nav-btn:active,
 	.nav-btn.current {
-		opacity: 1;
-		background: radial-gradient(circle at 50% 50%, #ff9dbe 10%, #ffe3ee 85%);
-		box-shadow: 0 0 18px 4px rgba(255, 0, 72, 0.24);
 		color: var(--color-accent);
+	}
+
+	.btn-label {
+		position: relative;
+		z-index: 1;
 	}
 
 	/* 6. 懸浮字符亂碼載入動畫（chitchat，加速版）：

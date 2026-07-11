@@ -6,7 +6,11 @@
 //    各圖層以遞進的深度係數平移，形成塊內 3D 視差。
 // ③ 3D 懸停傾斜：懸停時磚依游標在其包圍盒內的相對位置 rotateX / rotateY 傾斜。
 // ④ 插值與阻尼：平移、視差、傾斜全部經 lerp 平滑，經 rAF 驅動，帶自然拖尾延遲。
-// 磚面為純色佔位（標注真實 Gallery 內容），說明文字置於磚外（mono 10px 四行）。
+//
+// ▍圖片放置規則：把圖片命名為磚的編號放進 src/assets/gallery/（如 GAL-001.jpg），
+//   對應磚面自動換成圖片；沒有圖片的磚保持純色佔位。說明文字置於磚外（mono 10px 四行）。
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
 import { useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
@@ -15,6 +19,16 @@ interface Props {
 
 const { lang } = Astro.props;
 const t = useTranslations(lang);
+
+// 磚面圖片自動裝載（檔名 = 磚編號，不分大小寫）
+const galleryImages = import.meta.glob<{ default: ImageMetadata }>(
+	'/src/assets/gallery/*.{jpg,jpeg,png,webp}',
+	{ eager: true }
+);
+const imageFor = (code: string) =>
+	Object.entries(galleryImages).find(([path]) =>
+		path.toUpperCase().includes(`/${code.toUpperCase()}.`)
+	)?.[1]?.default;
 
 // 基礎單元（design px）：磚散置在 1500×1080 的一格裡，2×2 複製後逐磚回繞
 const CELL_W = 1500;
@@ -70,10 +84,6 @@ const copies = [
 ];
 ---
 
-<header class="gallery-head">
-	<h1 class="title-calx">{t.gallery.heading}</h1>
-</header>
-
 <div class="canvas-viewport" data-canvas-viewport>
 	{
 		copies.map((copy, ci) =>
@@ -98,8 +108,11 @@ const copies = [
 					<div class="tile-intro">
 						{/* ③ 傾斜層：懸停 rotateX/rotateY */}
 						<div class="tile-tilt" data-tilt data-cursor-label="VIEW">
-							{/* ② 視差層 1：底板（最深、移動最少） */}
+							{/* ② 視差層 1：底板（最深、移動最少）；有同名圖片時自動鋪滿 */}
 							<div class="tile-plate" data-depth="0.35">
+								{imageFor(tile.code) && (
+									<Image src={imageFor(tile.code)!} alt={tile.title} class="tile-img" width={900} />
+								)}
 								<span class="metadata tile-code" data-depth="0.75">{tile.code}</span>
 								{tile.quote && (
 									<p class="tile-quote" data-depth="0.55">
@@ -141,25 +154,11 @@ const copies = [
 </div>
 
 <style define:vars={{ cellW: `${CELL_W}`, cellH: `${CELL_H}` }}>
-	.gallery-head {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		flex-wrap: wrap;
-		gap: 8px 24px;
-		margin: var(--space-md) 0;
-	}
-
-	.gallery-head h1 {
-		font-size: clamp(2.25rem, 5vw, 3.75rem);
-		font-weight: 700;
-		letter-spacing: -0.02em;
-	}
-
-	/* 視口：全出血、無邊框 */
+	/* 視口：全出血撐滿整頁——上緣越過透明 header，開頁即滿屏無白隙 */
 	.canvas-viewport {
 		position: relative;
-		height: max(480px, calc(100svh - 210px));
+		height: calc(100svh + 64px);
+		margin-top: -64px;
 		margin-inline: calc(var(--gutter) * -1);
 		overflow: hidden;
 		touch-action: none;
@@ -209,7 +208,20 @@ const copies = [
 		will-change: transform;
 	}
 
+	/* 磚面圖片：鋪滿底板（有圖時編號疊於其上） */
+	.tile-plate {
+		overflow: hidden;
+	}
+	.tile-img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
 	.tile-code {
+		position: relative;
 		color: inherit;
 		opacity: 0.55;
 		will-change: transform;

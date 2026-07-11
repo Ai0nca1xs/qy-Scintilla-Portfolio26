@@ -50,6 +50,8 @@ export interface Dict {
 		back: string;
 	};
 	categories: Record<'GRA' | 'SCE' | 'INS' | 'PRD' | 'PHO', string>;
+	// 精煉版分類標籤（篩選欄 / 懸停縮略圖用）
+	categoriesShort: Record<'GRA' | 'SCE' | 'INS' | 'PRD' | 'PHO', string>;
 	gallery: {
 		pageTitle: string;
 		heading: string;
@@ -75,7 +77,7 @@ export const dict: Record<Lang, Dict> = {
 		},
 		nav: {
 			home: 'Home',
-			project: 'Project',
+			project: 'Projects',
 			gallery: 'Gallery',
 			contact: 'Contact',
 		},
@@ -129,7 +131,7 @@ export const dict: Record<Lang, Dict> = {
 		},
 		project: {
 			pageTitle: 'Projects — Scintilla',
-			heading: 'ARCHIVE / PROJECTS',
+			heading: 'PROJECTS',
 			filterAll: 'All',
 			statusInProgress: 'In progress',
 			back: '← Back to archive',
@@ -139,6 +141,13 @@ export const dict: Record<Lang, Dict> = {
 			SCE: 'Scenography & Worldbuilding',
 			INS: 'Installation & Interaction',
 			PRD: 'Object & Product',
+			PHO: 'Photography',
+		},
+		categoriesShort: {
+			GRA: 'Graphic',
+			SCE: 'Scenography',
+			INS: 'Installation',
+			PRD: 'Object',
 			PHO: 'Photography',
 		},
 		gallery: {
@@ -219,7 +228,7 @@ export const dict: Record<Lang, Dict> = {
 		},
 		project: {
 			pageTitle: 'Projets — Scintilla',
-			heading: 'ARCHIVE / PROJETS',
+			heading: 'PROJETS',
 			filterAll: 'Tous',
 			statusInProgress: 'En cours',
 			back: '← Retour à l’archive',
@@ -229,6 +238,13 @@ export const dict: Record<Lang, Dict> = {
 			SCE: 'Scénographie & Univers',
 			INS: 'Installation & Interaction',
 			PRD: 'Objet & Produit',
+			PHO: 'Photographie',
+		},
+		categoriesShort: {
+			GRA: 'Graphique',
+			SCE: 'Scénographie',
+			INS: 'Installation',
+			PRD: 'Objet',
 			PHO: 'Photographie',
 		},
 		gallery: {

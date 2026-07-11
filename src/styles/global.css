@@ -133,6 +133,14 @@ body::after {
   outline-offset: 3px;
 }
 
+/* 圖片保護（威懾層）：禁拖拽保存、禁選中；右鍵另存由 BaseLayout 腳本攔截。
+   注意：無法阻止截圖——線上圖片請控制在 ≤1600px 並考慮加署名（見 docs/maintenance-guide.md） */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* 3. 超連結 */
 a {
   color: inherit;

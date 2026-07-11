@@ -46,6 +46,12 @@ const lang = getLangFromUrl(Astro.url);
 				initTextMotion(); // 逐詞滾動顯現（data-text-motion）
 				initTypeShuffle(); // 字符翻牌解碼（data-type-shuffle）
 			});
+
+			// 圖片保護（威懾層）：作品圖上禁用右鍵選單，配合 CSS 禁拖拽。
+			// 只攔圖片不攔全頁，不影響正常瀏覽；無法防止截圖。
+			document.addEventListener('contextmenu', (e) => {
+				if (e.target instanceof HTMLImageElement) e.preventDefault();
+			});
 		</script>
 	</body>
 </html>
