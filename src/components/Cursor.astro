@@ -1,6 +1,7 @@
 ---
 ---
 {/* transition:persist 讓游標元素在頁面轉場時保留同一個 DOM 節點，事件監聽不會失效 */}
+<canvas class="cursor-trail" transition:persist="cursor-trail" aria-hidden="true"></canvas>
 <div class="cursor" transition:persist="cursor" aria-hidden="true"></div>
 <span class="cursor-label metadata" transition:persist="cursor-label" aria-hidden="true"></span>
 
@@ -14,10 +15,21 @@
 </style>
 
 <style>
+	/* 流星拖尾畫布：鋪滿視口，畫在游標點之下 */
+	.cursor-trail {
+		position: fixed;
+		inset: 0;
+		width: 100vw;
+		height: 100vh;
+		z-index: 9997;
+		pointer-events: none;
+	}
+
+	/* 游標本體：主題色圓點（流星頭） */
 	.cursor {
-		width: 10px;
-		height: 10px;
-		background-color: white; /* 設為白色以完美反轉所有背景 */
+		width: 8px;
+		height: 8px;
+		background-color: var(--color-accent);
 		border: 1.5px solid transparent;
 		border-radius: 50%;
 		position: fixed;
@@ -25,7 +37,7 @@
 		top: 0;
 		pointer-events: none; /* 絕對必要：讓游標穿透，不阻擋下層點擊 */
 		z-index: 9999;
-		mix-blend-mode: difference; /* 反轉色核心屬性 */
+		box-shadow: 0 0 10px rgba(255, 0, 72, 0.55);
 		opacity: 0; /* 初始隱藏，偵測到指針移動才顯示 */
 		transition:
 			opacity 0.3s ease,
@@ -34,35 +46,10 @@
 		will-change: transform;
 	}
 
-	/* 模式：懸停可點元素時變成空心圓環 */
+	/* 模式：懸停可點元素時變成主題色空心圓環 */
 	.cursor[data-mode='link'] {
 		background-color: transparent;
-		border-color: white;
-	}
-
-	/* 點擊漣漪：一圈白環快速擴散消散 */
-	.cursor::after {
-		content: '';
-		position: absolute;
-		inset: -3px;
-		border-radius: 50%;
-		border: 1.5px solid white;
-		opacity: 0;
-	}
-
-	.cursor.ping::after {
-		animation: cursor-ping 0.5s var(--ease-develop) forwards;
-	}
-
-	@keyframes cursor-ping {
-		from {
-			transform: scale(1);
-			opacity: 0.9;
-		}
-		to {
-			transform: scale(3.4);
-			opacity: 0;
-		}
+		border-color: var(--color-accent);
 	}
 
 	/* 游標旁的標本標籤：懸停在作品上時顯示動作提示（如 VIEW） */
@@ -83,12 +70,34 @@
 </style>
 
 <script>
-	// 效能要點：位置與縮放全部走 transform（合成器處理，不觸發重排），
-	// 並用 rAF + 線性插值做柔性跟隨；游標靜止後自動停掉動畫循環。
+	// 流星游標：主題色圓點 + 彗尾拖跡（移動時淡出的漸細軌跡），
+	// 點擊時迸出一簇火花（短暫的彩色速度線，像流星擦出的碎屑）。
+	// 效能：單一 rAF 循環同時驅動點的插值與畫布繪製，全部靜止後自動停機。
 	const cursor = document.querySelector('.cursor');
 	const label = document.querySelector('.cursor-label');
+	const canvas = document.querySelector('.cursor-trail');
 
-	if (cursor instanceof HTMLElement && window.matchMedia('(pointer: fine)').matches) {
+	if (
+		cursor instanceof HTMLElement &&
+		canvas instanceof HTMLCanvasElement &&
+		window.matchMedia('(pointer: fine)').matches
+	) {
+		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const ctx = canvas.getContext('2d');
+		const accent =
+			getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() ||
+			'#ff0048';
+		// 火花色板：主題色 + 玫瑰 / 琥珀 / 淡粉
+		const SPARK_COLORS = [accent, '#ffaad4', '#ffbe0b', '#fdc5f5'];
+
+		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const resize = () => {
+			canvas.width = Math.floor(window.innerWidth * dpr);
+			canvas.height = Math.floor(window.innerHeight * dpr);
+		};
+		resize();
+		window.addEventListener('resize', resize);
+
 		let x = -100;
 		let y = -100;
 		let targetX = -100;
@@ -100,21 +109,122 @@
 		let rafId = 0;
 		let visible = false;
 
-		const loop = () => {
+		// —— 彗尾：最近軌跡點（帶時間戳，繪製時按年齡漸隱漸細）——
+		type TrailPoint = { x: number; y: number; t: number };
+		const TRAIL_LIFE = 420; // ms
+		let trail: TrailPoint[] = [];
+
+		// —— 點擊火花 ——
+		type Spark = {
+			x: number;
+			y: number;
+			vx: number;
+			vy: number;
+			age: number;
+			life: number;
+			color: string;
+		};
+		let sparks: Spark[] = [];
+		let lastFrame = 0;
+
+		const spawnBurst = (bx: number, by: number) => {
+			const count = 12;
+			for (let i = 0; i < count; i++) {
+				const ang = (i / count) * Math.PI * 2 + Math.random() * 0.6;
+				const speed = 2.2 + Math.random() * 4.2;
+				sparks.push({
+					x: bx,
+					y: by,
+					vx: Math.cos(ang) * speed,
+					vy: Math.sin(ang) * speed,
+					age: 0,
+					life: 380 + Math.random() * 320,
+					color: SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)],
+				});
+			}
+		};
+
+		const paint = (now: number, dt: number) => {
+			if (!ctx) return false;
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			let busy = false;
+
+			// 彗尾：相鄰軌跡點連成漸細漸隱的光帶
+			trail = trail.filter((p) => now - p.t < TRAIL_LIFE);
+			if (trail.length > 1) {
+				busy = true;
+				ctx.lineCap = 'round';
+				ctx.shadowColor = accent;
+				ctx.shadowBlur = 10 * dpr;
+				for (let i = 1; i < trail.length; i++) {
+					const a = trail[i - 1];
+					const b = trail[i];
+					const k = 1 - (now - b.t) / TRAIL_LIFE; // 0 舊 → 1 新
+					ctx.strokeStyle = accent;
+					ctx.globalAlpha = 0.55 * k * k;
+					ctx.lineWidth = (0.5 + 4.5 * k) * dpr;
+					ctx.beginPath();
+					ctx.moveTo(a.x * dpr, a.y * dpr);
+					ctx.lineTo(b.x * dpr, b.y * dpr);
+					ctx.stroke();
+				}
+				ctx.shadowBlur = 0;
+				ctx.globalAlpha = 1;
+			}
+
+			// 火花：速度線碎屑，帶阻尼與微重力
+			if (sparks.length) {
+				busy = true;
+				const step = dt / 16.7;
+				for (const s of sparks) {
+					s.age += dt;
+					s.x += s.vx * step;
+					s.y += s.vy * step;
+					s.vx *= 0.94;
+					s.vy = s.vy * 0.94 + 0.05 * step;
+					const k = 1 - s.age / s.life;
+					if (k <= 0) continue;
+					ctx.strokeStyle = s.color;
+					ctx.globalAlpha = Math.max(0, k);
+					ctx.lineWidth = 1.6 * dpr;
+					ctx.beginPath();
+					ctx.moveTo(s.x * dpr, s.y * dpr);
+					ctx.lineTo((s.x - s.vx * 2.4) * dpr, (s.y - s.vy * 2.4) * dpr);
+					ctx.stroke();
+				}
+				ctx.globalAlpha = 1;
+				sparks = sparks.filter((s) => s.age < s.life);
+			}
+
+			return busy;
+		};
+
+		const loop = (now: number) => {
+			const dt = lastFrame ? Math.min(48, now - lastFrame) : 16.7;
+			lastFrame = now;
+
 			x += (targetX - x) * 0.25;
 			y += (targetY - y) * 0.25;
 			scale += (targetScale - scale) * 0.18;
-			cursor.style.transform = `translate3d(${x - 5}px, ${y - 5}px, 0) scale(${scale.toFixed(3)})`;
+			cursor.style.transform = `translate3d(${x - 4}px, ${y - 4}px, 0) scale(${scale.toFixed(3)})`;
 			if (label instanceof HTMLElement) {
 				label.style.transform = `translate3d(${x + 18}px, ${y + 18}px, 0)`;
 			}
 
+			const painting = reduced ? false : paint(now, dt);
+
 			const settled =
 				Math.abs(targetX - x) < 0.1 &&
 				Math.abs(targetY - y) < 0.1 &&
-				Math.abs(targetScale - scale) < 0.01;
+				Math.abs(targetScale - scale) < 0.01 &&
+				!painting;
 
-			rafId = settled ? 0 : requestAnimationFrame(loop);
+			if (settled) {
+				rafId = 0;
+				lastFrame = 0;
+			} else {
+				rafId = requestAnimationFrame(loop);
+			}
 		};
 
 		const wake = () => {
@@ -122,7 +232,7 @@
 		};
 
 		const updateScale = () => {
-			targetScale = pressing ? 2.4 : hoveringLink ? 1.8 : 1;
+			targetScale = pressing ? 2.2 : hoveringLink ? 1.9 : 1;
 			wake();
 		};
 
@@ -138,18 +248,17 @@
 					document.documentElement.classList.add('has-custom-cursor');
 					cursor.style.opacity = '1';
 				}
+				if (!reduced) trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
 				wake();
 			},
 			{ passive: true }
 		);
 
-		window.addEventListener('pointerdown', () => {
+		window.addEventListener('pointerdown', (e) => {
 			pressing = true;
 			updateScale();
-			// 重播點擊漣漪
-			cursor.classList.remove('ping');
-			void cursor.offsetWidth;
-			cursor.classList.add('ping');
+			if (!reduced) spawnBurst(e.clientX, e.clientY);
+			wake();
 		});
 
 		window.addEventListener('pointerup', () => {

@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-    <text x="64" y="98" font-size="104" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">⌮</text>
-    <style>
-        text { fill: #1a1a1a; }
-        @media (prefers-color-scheme: dark) {
-            text { fill: #f8f9fa; }
-        }
-    </style>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#FF0048"/></svg>

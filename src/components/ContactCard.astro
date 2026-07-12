@@ -112,6 +112,9 @@ const backImg = Object.entries(cardImages).find(([path]) => path.includes('card-
 		cursor: none;
 	}
 
+	/* 翻面綁在「不旋轉的外殼」（.card-scene）的 hover 上——
+	   卡牌自身 3D 旋轉時命中區域不變，不會中途觸發 leave 而卡在半途 */
+	.card-scene:hover .biz-card,
 	.biz-card.flipped {
 		transform: rotateY(180deg);
 	}
@@ -250,13 +253,11 @@ const backImg = Object.entries(cardImages).find(([path]) => path.includes('card-
 </style>
 
 <script>
-	// 卡牌翻轉：懸浮自動翻面（離開翻回）；鍵盤 Enter / 空格保留無障礙切換
+	// 懸浮翻面由 CSS（.card-scene:hover）驅動；此處只保留鍵盤無障礙切換
 	function initCardFlip() {
 		const card = document.querySelector('.biz-card');
 		if (!(card instanceof HTMLElement)) return;
 
-		card.addEventListener('pointerenter', () => card.classList.add('flipped'));
-		card.addEventListener('pointerleave', () => card.classList.remove('flipped'));
 		card.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
 				e.preventDefault();
