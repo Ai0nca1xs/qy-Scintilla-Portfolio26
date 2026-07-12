@@ -6,10 +6,11 @@ import { defineConfig, fontProviders } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-	// GitHub Pages 專案站點：部署在 https://ai0nca1xs.github.io/qy-Scintilla-Portfolio26/
-	// base 是子路徑前綴，站內連結需透過 src/i18n/utils.ts 的 withBase() 生成
+	// GitHub Pages 專案站點：部署在 https://ai0nca1xs.github.io/Scintilla/
+	// base 是子路徑前綴（= 倉庫名），站內連結需透過 src/i18n/utils.ts 的 withBase() 生成。
+	// ⚠ 若再次改倉庫名：同步改這裡的 base 與 PrintBook.astro 的 SITE_URL
 	site: 'https://ai0nca1xs.github.io',
-	base: '/qy-Scintilla-Portfolio26',
+	base: '/Scintilla',
 	integrations: [mdx(), sitemap()],
 	fonts: [
 		{

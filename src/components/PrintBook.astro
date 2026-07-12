@@ -1,0 +1,632 @@
+---
+// 求職用 Portfolio 成冊頁（/EN/print/ 與 /FR/print/）：
+// 把站內內容自動排成 A4 橫向書冊——封面 → 簡介/CV → 目錄 → 每作品一頁 → Gallery 索引 → 封底。
+// 瀏覽器 Cmd/Ctrl+P → 儲存為 PDF（選 A4 橫向、勾選「背景圖形」）。
+// 內容與網站同源：作品 md、圖片管線（cover/NN-圖）、i18n 詞典、Gallery 清單，改站即改冊。
+// 版式：瑞士式雙聲部（Roboto Mono 大寫標題 / Helvetica Light 正文）、大留白、無結構線。
+import { getCollection, render } from 'astro:content';
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+import { galleryTiles } from '@/data/gallery';
+import { useTranslations, type Lang } from '@/i18n/utils';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const fr = lang === 'FR';
+const year = new Date().getFullYear();
+const SITE_URL = 'https://ai0nca1xs.github.io/Scintilla/';
+
+// 與檔案庫同一套排序：年份新 → 舊
+const endYear = (y: string) => {
+	const full = y.match(/\d{4}/g);
+	if (!full) return 0;
+	let latest = Math.max(...full.map(Number));
+	const short = y.match(/[–-](\d{2})\s*$/);
+	if (short) latest = Math.max(latest, Math.floor(latest / 100) * 100 + Number(short[1]));
+	return latest;
+};
+const localePrefix = fr ? 'fr/' : 'en/';
+const entries = (await getCollection('projects', ({ id }) => id.startsWith(localePrefix))).sort(
+	(a, b) => endYear(b.data.year) - endYear(a.data.year) || a.data.order - b.data.order
+);
+const projects = await Promise.all(
+	entries.map(async (entry) => ({ entry, Content: (await render(entry)).Content }))
+);
+
+// 圖片管線（與詳情頁同規則）：cover.* 為封面，NN-*.jpg 為圖版
+const allImages = import.meta.glob<{ default: ImageMetadata }>(
+	'/src/assets/projects/*/*.{jpg,jpeg,png,webp}',
+	{ eager: true }
+);
+const imagesOf = (slug: string) => {
+	const own = Object.entries(allImages)
+		.filter(([path]) => path.includes(`/projects/${slug}/`))
+		.sort(([a], [b]) => a.localeCompare(b));
+	return {
+		cover: own.find(([path]) => /\/cover\.[a-z]+$/i.test(path))?.[1]?.default ?? null,
+		details: own
+			.filter(([path]) => !/\/cover\.[a-z]+$/i.test(path))
+			.map(([, mod]) => mod.default),
+	};
+};
+const slugOf = (id: string) => id.replace(/^(en|fr)\//, '');
+
+// 手動頁碼（每節一頁）：封面 1 / 簡介 2 / 目錄 3 / 作品 4..N / Gallery / 封底
+const pageOfProject = (i: number) => 4 + i;
+const galleryPage = 4 + projects.length;
+const backPage = galleryPage + 1;
+
+const L = fr
+	? { portfolio: 'Portfolio', contents: 'Sommaire', profile: 'Profil', gallery: 'Univers personnel', thanks: 'Merci.', printHint: 'Cmd/Ctrl + P → 儲存為 PDF（A4 橫向・勾選「背景圖形」）', print: '導出 PDF' }
+	: { portfolio: 'Portfolio', contents: 'Contents', profile: 'Profile', gallery: 'Personal aesthetic', thanks: 'Thank you.', printHint: 'Cmd/Ctrl + P → Save as PDF (A4 landscape · enable "Background graphics")', print: 'Export PDF' };
+---
+
+<!doctype html>
+<html lang={fr ? 'fr' : 'en'}>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="robots" content="noindex" />
+		<title>{`Portfolio ${year} — Qianyu HE`}</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"
+		/>
+	</head>
+	<body>
+		{/* 屏顯工具條（打印時隱藏） */}
+		<div class="toolbar">
+			<span>{L.printHint}</span>
+			<button id="print-btn">{L.print} ↓</button>
+		</div>
+
+		{/* —— 1. 封面 —— */}
+		<section class="sheet cover">
+			<div class="cover-orb" aria-hidden="true"></div>
+			<span class="folio-label">SCINTILLA — {L.portfolio} {year}</span>
+			<h1 class="cover-title">SCINTILLA<span class="accent">.</span></h1>
+			<p class="cover-sub">{t.home.heroMeta}</p>
+			<div class="cover-foot">
+				<span>Qianyu HE</span>
+				<span>{t.contact.role}</span>
+				<span>{t.contact.location} · {t.contact.email}</span>
+			</div>
+		</section>
+
+		{/* —— 2. 簡介 / CV —— */}
+		<section class="sheet">
+			<header class="sheet-head">
+				<span class="label">01 / {L.profile}</span>
+				<span class="label folio">02</span>
+			</header>
+			<div class="profile-grid">
+				<div>
+					<p class="lead" set:html={t.home.introHtml} />
+					<p class="lead-concept">{t.home.concept}</p>
+				</div>
+				<div class="cv">
+					<span class="label">Education</span>
+					<ul>
+						{t.home.cvEducation.map((line) => <li>{line}</li>)}
+					</ul>
+					<span class="label">Selected experience</span>
+					<ul>
+						{t.home.cvExperience.map((line) => <li>{line}</li>)}
+					</ul>
+					<span class="label">Info</span>
+					<ul>
+						{t.home.cvMeta.map((line) => <li>{line}</li>)}
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		{/* —— 3. 目錄 —— */}
+		<section class="sheet">
+			<header class="sheet-head">
+				<span class="label">02 / {L.contents}</span>
+				<span class="label folio">03</span>
+			</header>
+			<ol class="toc">
+				{
+					projects.map(({ entry }, i) => (
+						<li>
+							<span class="toc-no">{String(i + 1).padStart(2, '0')}</span>
+							<span class="toc-title">{entry.data.title}</span>
+							<span class="toc-meta">
+								{t.categoriesShort[entry.data.category]} · {entry.data.year}
+							</span>
+							<span class="toc-page">{String(pageOfProject(i)).padStart(2, '0')}</span>
+						</li>
+					))
+				}
+				<li>
+					<span class="toc-no">＋</span>
+					<span class="toc-title">{L.gallery}</span>
+					<span class="toc-meta">Gallery</span>
+					<span class="toc-page">{String(galleryPage).padStart(2, '0')}</span>
+				</li>
+			</ol>
+		</section>
+
+		{/* —— 4. 作品頁：左文右圖 —— */}
+		{
+			projects.map(({ entry, Content }, i) => {
+				const d = entry.data;
+				const imgs = imagesOf(slugOf(entry.id));
+				const details = imgs.details.slice(0, 3);
+				return (
+					<section class="sheet project" data-cat={d.category}>
+						<header class="sheet-head">
+							<span class="label">
+								{String(i + 1).padStart(2, '0')} — {t.categoriesShort[d.category]} · {d.year}
+								{d.status === 'in-progress' &&
+									` · ${t.project.statusInProgress}`}
+							</span>
+							<span class="label folio">{String(pageOfProject(i)).padStart(2, '0')}</span>
+						</header>
+						<div class="project-grid">
+							<div class="project-text">
+								<h2 class="project-title">{d.title}</h2>
+								<span class="swatch" aria-hidden="true" />
+								<p class="summary">{d.summary}</p>
+								<div class="specs">
+									{d.medium && <span>{d.medium}</span>}
+									{d.materials && <span>{d.materials}</span>}
+									{d.dimensions && <span>{d.dimensions}</span>}
+									{d.exhibitions?.map((e) => <span>{e}</span>)}
+								</div>
+								<div class="body">
+									<Content />
+								</div>
+							</div>
+							<div class="project-media">
+								{imgs.cover ? (
+									<Image src={imgs.cover} alt={d.title} class="media-main" width={1600} />
+								) : (
+									<div class="media-placeholder">
+										<span>{d.code}</span>
+									</div>
+								)}
+								{details.length > 0 && (
+									<div class="media-row">
+										{details.map((img) => (
+											<Image src={img} alt={d.title} width={800} />
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+					</section>
+				);
+			})
+		}
+
+		{/* —— 5. Gallery 索引 —— */}
+		<section class="sheet">
+			<header class="sheet-head">
+				<span class="label">03 / {L.gallery}</span>
+				<span class="label folio">{String(galleryPage).padStart(2, '0')}</span>
+			</header>
+			<p class="gallery-note">{t.home.galleryText}</p>
+			<div class="gallery-index">
+				{
+					galleryTiles.map((tile) => (
+						<div class="g-item">
+							<span class="g-title">{tile.title}</span>
+							<span class="g-line">{tile.matiere}</span>
+							<span class="g-line">{tile.desc}</span>
+							<span class="g-date">{tile.date}</span>
+						</div>
+					))
+				}
+			</div>
+		</section>
+
+		{/* —— 6. 封底 / 聯繫 —— */}
+		<section class="sheet back">
+			<h2 class="back-thanks">{L.thanks}</h2>
+			<div class="back-contact">
+				<span>Qianyu HE — {t.contact.role}</span>
+				<span>{t.contact.email}</span>
+				<span>{t.contact.location}</span>
+				<span>{SITE_URL}</span>
+			</div>
+			<span class="folio-label back-folio">SCINTILLA — {L.portfolio} {year} · {String(backPage).padStart(2, '0')}</span>
+		</section>
+
+		<style>
+			/* ——— 基礎：A4 橫向書頁 ——— */
+			:root {
+				--accent: #ff0048;
+				--ink: #1a1a1a;
+				--ink-2: rgba(26, 26, 26, 0.7);
+				--ink-3: rgba(26, 26, 26, 0.45);
+				--mono: 'Roboto Mono', ui-monospace, monospace;
+				--sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: var(--sans);
+				font-weight: 300;
+				color: var(--ink);
+				background: #e6e8ea; /* 屏顯：預覽台面 */
+				-webkit-print-color-adjust: exact;
+				print-color-adjust: exact;
+			}
+
+			@page {
+				size: A4 landscape;
+				margin: 0;
+			}
+
+			.sheet {
+				position: relative;
+				width: 297mm;
+				height: 210mm;
+				padding: 14mm 16mm;
+				background: #ffffff;
+				overflow: hidden;
+				page-break-after: always;
+				break-after: page;
+			}
+
+			/* 屏顯預覽：紙張居中疊放 */
+			@media screen {
+				.sheet {
+					margin: 24px auto;
+					box-shadow: 0 12px 40px -18px rgba(26, 26, 26, 0.35);
+				}
+			}
+
+			/* 工具條：僅屏顯 */
+			.toolbar {
+				position: sticky;
+				top: 0;
+				z-index: 10;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 16px;
+				padding: 10px 24px;
+				background: rgba(26, 26, 26, 0.92);
+				color: #f8f9fa;
+				font-family: var(--mono);
+				font-size: 12px;
+				letter-spacing: 0.06em;
+			}
+			.toolbar button {
+				font-family: var(--mono);
+				font-size: 12px;
+				padding: 4px 14px;
+				border: none;
+				background: var(--accent);
+				color: #ffffff;
+				cursor: pointer;
+			}
+			@media print {
+				.toolbar {
+					display: none;
+				}
+			}
+
+			/* ——— 通用元件 ——— */
+			.label {
+				font-family: var(--mono);
+				font-size: 7pt;
+				letter-spacing: 0.14em;
+				color: var(--ink-3);
+			}
+
+			.sheet-head {
+				display: flex;
+				justify-content: space-between;
+				align-items: baseline;
+				margin-bottom: 10mm;
+			}
+
+			.folio-label {
+				font-family: var(--mono);
+				font-size: 7pt;
+				letter-spacing: 0.14em;
+				color: var(--ink-3);
+			}
+
+			/* ——— 封面 ——— */
+			.cover {
+				display: flex;
+				flex-direction: column;
+				justify-content: space-between;
+			}
+			.cover-orb {
+				position: absolute;
+				right: -30mm;
+				bottom: -46mm;
+				width: 120mm;
+				height: 120mm;
+				border-radius: 50%;
+				background: radial-gradient(circle at 38% 34%, #ffaad4 0%, var(--accent) 78%);
+			}
+			.cover-title {
+				font-family: var(--mono);
+				font-weight: 700;
+				font-size: 64pt;
+				letter-spacing: -0.02em;
+				line-height: 1;
+				margin: auto 0 0;
+			}
+			.accent {
+				color: var(--accent);
+			}
+			.cover-sub {
+				font-family: var(--mono);
+				font-size: 9pt;
+				letter-spacing: 0.12em;
+				color: var(--ink-2);
+				margin: 6mm 0 auto;
+			}
+			.cover-foot {
+				display: flex;
+				gap: 10mm;
+				font-family: var(--mono);
+				font-size: 7.5pt;
+				letter-spacing: 0.08em;
+				color: var(--ink-2);
+			}
+
+			/* ——— 簡介 / CV ——— */
+			.profile-grid {
+				display: grid;
+				grid-template-columns: 1.2fr 1fr;
+				gap: 18mm;
+			}
+			.lead {
+				font-size: 13pt;
+				line-height: 1.6;
+				font-weight: 300;
+				margin: 0 0 8mm;
+				max-width: 125mm;
+			}
+			.lead :global(strong) {
+				font-weight: 500;
+			}
+			.lead-concept {
+				font-style: italic;
+				font-size: 10pt;
+				color: var(--ink-2);
+				margin: 0;
+			}
+			.cv .label {
+				display: block;
+				margin: 0 0 3mm;
+			}
+			.cv ul {
+				list-style: none;
+				margin: 0 0 8mm;
+				padding: 0;
+			}
+			.cv li {
+				font-size: 8pt;
+				line-height: 1.9;
+				color: var(--ink-2);
+			}
+
+			/* ——— 目錄 ——— */
+			.toc {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				max-width: 200mm;
+			}
+			.toc li {
+				display: grid;
+				grid-template-columns: 14mm 1fr auto 14mm;
+				gap: 8mm;
+				align-items: baseline;
+				padding: 3.4mm 0;
+			}
+			.toc-no,
+			.toc-page {
+				font-family: var(--mono);
+				font-size: 8pt;
+				color: var(--ink-3);
+			}
+			.toc-page {
+				text-align: right;
+			}
+			.toc-title {
+				font-family: var(--mono);
+				font-weight: 700;
+				font-size: 13pt;
+				letter-spacing: -0.01em;
+				text-transform: uppercase;
+			}
+			.toc-meta {
+				font-family: var(--mono);
+				font-size: 7.5pt;
+				letter-spacing: 0.08em;
+				color: var(--ink-2);
+			}
+
+			/* ——— 作品頁 ——— */
+			.project-grid {
+				display: grid;
+				grid-template-columns: 92mm 1fr;
+				gap: 12mm;
+				height: calc(100% - 16mm);
+			}
+			.project-title {
+				font-family: var(--mono);
+				font-weight: 700;
+				font-size: 24pt;
+				letter-spacing: -0.02em;
+				line-height: 1.05;
+				text-transform: uppercase;
+				margin: 0 0 3mm;
+			}
+			.swatch {
+				display: block;
+				width: 14mm;
+				height: 2mm;
+				margin-bottom: 6mm;
+			}
+			.project[data-cat='GRA'] .swatch { background: #ff5c00; }
+			.project[data-cat='SCE'] .swatch { background: #e4007c; }
+			.project[data-cat='INS'] .swatch { background: #1f3cff; }
+			.project[data-cat='PRD'] .swatch { background: #ffd500; }
+			.project[data-cat='PHO'] .swatch { background: #5b6b7f; }
+
+			.summary {
+				font-style: italic;
+				font-size: 9.5pt;
+				line-height: 1.6;
+				color: var(--ink-2);
+				margin: 0 0 5mm;
+			}
+			.specs {
+				display: flex;
+				flex-direction: column;
+				gap: 1mm;
+				font-family: var(--mono);
+				font-size: 7pt;
+				letter-spacing: 0.08em;
+				color: var(--ink-3);
+				margin-bottom: 6mm;
+			}
+			.body :global(p) {
+				font-size: 8.5pt;
+				line-height: 1.75;
+				margin: 0 0 3mm;
+				color: var(--ink);
+			}
+
+			.project-media {
+				display: flex;
+				flex-direction: column;
+				gap: 6mm;
+				min-height: 0;
+			}
+			.project-media :global(img.media-main) {
+				flex: 1;
+				width: 100%;
+				min-height: 0;
+				object-fit: cover;
+			}
+			.media-placeholder {
+				flex: 1;
+				display: flex;
+				align-items: flex-end;
+				padding: 8mm;
+				background: #f0f2f4;
+			}
+			.project[data-cat='GRA'] .media-placeholder { background: rgba(255, 92, 0, 0.16); }
+			.project[data-cat='SCE'] .media-placeholder { background: rgba(228, 0, 124, 0.14); }
+			.project[data-cat='INS'] .media-placeholder { background: rgba(31, 60, 255, 0.12); }
+			.project[data-cat='PRD'] .media-placeholder { background: rgba(255, 213, 0, 0.2); }
+			.project[data-cat='PHO'] .media-placeholder { background: rgba(91, 107, 127, 0.16); }
+			.media-placeholder span {
+				font-family: var(--mono);
+				font-size: 8pt;
+				letter-spacing: 0.14em;
+				color: var(--ink-3);
+			}
+			.media-row {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 6mm;
+				height: 34mm;
+			}
+			.media-row :global(img) {
+				width: 100%;
+				height: 34mm;
+				object-fit: cover;
+			}
+
+			/* ——— Gallery 索引 ——— */
+			.gallery-note {
+				font-style: italic;
+				font-size: 9pt;
+				color: var(--ink-2);
+				margin: 0 0 8mm;
+			}
+			.gallery-index {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 8mm 12mm;
+			}
+			.g-item {
+				display: flex;
+				flex-direction: column;
+				gap: 0.8mm;
+			}
+			.g-title {
+				font-family: var(--mono);
+				font-weight: 700;
+				font-size: 9pt;
+				text-transform: uppercase;
+				letter-spacing: 0.02em;
+			}
+			.g-line {
+				font-family: var(--mono);
+				font-style: italic;
+				font-size: 7pt;
+				color: var(--ink-2);
+			}
+			.g-date {
+				font-family: var(--mono);
+				font-style: italic;
+				font-size: 7pt;
+				color: var(--ink-3);
+			}
+
+			/* ——— 封底 ——— */
+			.back {
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: flex-start;
+			}
+			.back-thanks {
+				font-family: var(--mono);
+				font-weight: 700;
+				font-size: 40pt;
+				letter-spacing: -0.02em;
+				margin: 0 0 12mm;
+			}
+			.back-contact {
+				display: flex;
+				flex-direction: column;
+				gap: 2mm;
+				font-family: var(--mono);
+				font-size: 8.5pt;
+				letter-spacing: 0.06em;
+				color: var(--ink-2);
+			}
+			.back-folio {
+				position: absolute;
+				bottom: 14mm;
+				right: 16mm;
+			}
+		</style>
+
+		<script>
+			document.getElementById('print-btn')?.addEventListener('click', () => window.print());
+		</script>
+	</body>
+</html>

@@ -1,6 +1,6 @@
 import { dict, defaultLang, type Lang, type Dict } from './ui';
 
-// GitHub Pages 專案站點會部署在子路徑下（例如 /qy-Scintilla-Portfolio26/），
+// GitHub Pages 專案站點會部署在子路徑下（例如 /Scintilla/），
 // 所有站內連結都必須經過 withBase() 加上這個前綴，否則部署後會 404。
 const rawBase = import.meta.env.BASE_URL;
 export const base = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
