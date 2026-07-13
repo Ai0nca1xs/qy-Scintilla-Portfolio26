@@ -90,13 +90,17 @@
 		// 火花色板：主題色 + 玫瑰 / 琥珀 / 淡粉
 		const SPARK_COLORS = [accent, '#ffaad4', '#ffbe0b', '#fdc5f5'];
 
-		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		// 拖尾是運動中的細線，1.5x 解析度肉眼無差，成本省近一半
+		const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 		const resize = () => {
 			canvas.width = Math.floor(window.innerWidth * dpr);
 			canvas.height = Math.floor(window.innerHeight * dpr);
 		};
 		resize();
 		window.addEventListener('resize', resize);
+
+		// 髒矩形：只清除上一幀實際畫過的區域，不整面 clearRect（全屏畫布的大頭開銷）
+		let dirty: { x: number; y: number; w: number; h: number } | null = null;
 
 		let x = -100;
 		let y = -100;
@@ -147,43 +151,47 @@
 
 		const paint = (now: number, dt: number) => {
 			if (!ctx) return false;
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			// 只清上一幀的髒矩形
+			if (dirty) {
+				ctx.clearRect(dirty.x, dirty.y, dirty.w, dirty.h);
+				dirty = null;
+			}
 			let busy = false;
+			let minX = Infinity;
+			let minY = Infinity;
+			let maxX = -Infinity;
+			let maxY = -Infinity;
+			const mark = (px: number, py: number) => {
+				if (px < minX) minX = px;
+				if (py < minY) minY = py;
+				if (px > maxX) maxX = px;
+				if (py > maxY) maxY = py;
+			};
 
-			// 彗尾：相鄰軌跡點連成漸細漸隱的光帶。
-			// 辉光不用 shadowBlur（逐段陰影極貴），改雙層描邊：寬淡光暈 + 細亮芯
+			// 鋼筆拖尾：單層實線，筆鋒由新到舊漸細漸隱（無辉光、無陰影）
 			trail = trail.filter((p) => now - p.t < TRAIL_LIFE);
 			if (trail.length > 1) {
 				busy = true;
 				ctx.lineCap = 'round';
+				ctx.lineJoin = 'round';
 				ctx.strokeStyle = accent;
 				for (let i = 1; i < trail.length; i++) {
 					const a = trail[i - 1];
 					const b = trail[i];
 					const k = 1 - (now - b.t) / TRAIL_LIFE; // 0 舊 → 1 新
-					const ax = a.x * dpr;
-					const ay = a.y * dpr;
-					const bx = b.x * dpr;
-					const by = b.y * dpr;
-					// 光暈層
-					ctx.globalAlpha = 0.14 * k;
-					ctx.lineWidth = (3 + 8 * k) * dpr;
+					ctx.globalAlpha = Math.min(1, 0.9 * k + 0.1);
+					ctx.lineWidth = (0.4 + 2.2 * k) * dpr;
 					ctx.beginPath();
-					ctx.moveTo(ax, ay);
-					ctx.lineTo(bx, by);
+					ctx.moveTo(a.x * dpr, a.y * dpr);
+					ctx.lineTo(b.x * dpr, b.y * dpr);
 					ctx.stroke();
-					// 亮芯層
-					ctx.globalAlpha = 0.7 * k * k;
-					ctx.lineWidth = (0.5 + 3 * k) * dpr;
-					ctx.beginPath();
-					ctx.moveTo(ax, ay);
-					ctx.lineTo(bx, by);
-					ctx.stroke();
+					mark(a.x * dpr, a.y * dpr);
+					mark(b.x * dpr, b.y * dpr);
 				}
 				ctx.globalAlpha = 1;
 			}
 
-			// 火花：速度線碎屑，帶阻尼與微重力
+			// 火花（點擊效果保留）：速度線碎屑，帶阻尼與微重力
 			if (sparks.length) {
 				busy = true;
 				const step = dt / 16.7;
@@ -198,13 +206,28 @@
 					ctx.strokeStyle = s.color;
 					ctx.globalAlpha = Math.max(0, k);
 					ctx.lineWidth = 1.6 * dpr;
+					const tailX = (s.x - s.vx * 2.4) * dpr;
+					const tailY = (s.y - s.vy * 2.4) * dpr;
 					ctx.beginPath();
 					ctx.moveTo(s.x * dpr, s.y * dpr);
-					ctx.lineTo((s.x - s.vx * 2.4) * dpr, (s.y - s.vy * 2.4) * dpr);
+					ctx.lineTo(tailX, tailY);
 					ctx.stroke();
+					mark(s.x * dpr, s.y * dpr);
+					mark(tailX, tailY);
 				}
 				ctx.globalAlpha = 1;
 				sparks = sparks.filter((s) => s.age < s.life);
+			}
+
+			// 記錄本幀髒矩形（含線寬余量），下一幀只清這塊
+			if (busy && minX < Infinity) {
+				const pad = 12 * dpr;
+				dirty = {
+					x: minX - pad,
+					y: minY - pad,
+					w: maxX - minX + pad * 2,
+					h: maxY - minY + pad * 2,
+				};
 			}
 
 			return busy;

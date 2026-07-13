@@ -33,10 +33,6 @@ const localePrefix = fr ? 'fr/' : 'en/';
 const entries = (await getCollection('projects', ({ id }) => id.startsWith(localePrefix))).sort(
 	(a, b) => endYear(b.data.year) - endYear(a.data.year) || a.data.order - b.data.order
 );
-const projects = await Promise.all(
-	entries.map(async (entry) => ({ entry, Content: (await render(entry)).Content }))
-);
-
 // 圖片管線（與詳情頁同規則）：cover.* 為封面，NN-*.jpg 為圖版
 const allImages = import.meta.glob<{ default: ImageMetadata }>(
 	'/src/assets/projects/*/*.{jpg,jpeg,png,webp}',
@@ -55,10 +51,49 @@ const imagesOf = (slug: string) => {
 };
 const slugOf = (id: string) => id.replace(/^(en|fr)\//, '');
 
-// 手動頁碼（每節一頁）：封面 1 / 簡介 2 / 目錄 3 / 作品 4..N / Gallery / 封底
-const pageOfProject = (i: number) => 4 + i;
-const galleryPage = 4 + projects.length;
-const backPage = galleryPage + 1;
+// Gallery 磚面首圖（與畫布同規則：檔名以編號開頭，首圖無尾綴）
+const galleryImgs = import.meta.glob<{ default: ImageMetadata }>(
+	'/src/assets/gallery/*.{jpg,jpeg,png,webp}',
+	{ eager: true }
+);
+const galleryImageFor = (code: string) => {
+	const matches = Object.entries(galleryImgs)
+		.filter(([path]) => {
+			const base = (path.split('/').pop() ?? '').toUpperCase();
+			return base.startsWith(`${code.toUpperCase()}.`) || base.startsWith(`${code.toUpperCase()}-`);
+		})
+		.sort(([a], [b]) => {
+			const key = (p: string) =>
+				(p.split('/').pop() ?? '').replace(/\.[a-z]+$/i, '').slice(code.length) || '-00';
+			return key(a).localeCompare(key(b), undefined, { numeric: true });
+		});
+	return matches[0]?.[1]?.default ?? null;
+};
+
+const chunk = <T,>(arr: T[], size: number): T[][] => {
+	const out: T[][] = [];
+	for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+	return out;
+};
+
+// —— 組頁與動態頁碼 ——
+// 作品主頁放封面圖 + 前 3 張細節；其餘細節圖自動生成「續頁」（2×2 大圖網格）。
+// Gallery 每頁 8 格（4×2）圖文馬賽克。
+const projectsRaw = await Promise.all(
+	entries.map(async (entry) => ({ entry, Content: (await render(entry)).Content }))
+);
+let cursor = 4; // 封面 1 / 簡介 2 / 目錄 3
+const projects = projectsRaw.map((p) => {
+	const imgs = imagesOf(slugOf(p.entry.id));
+	const extras = chunk(imgs.details.slice(3), 4);
+	const page = cursor;
+	cursor += 1 + extras.length;
+	return { ...p, cover: imgs.cover, details: imgs.details.slice(0, 3), extras, page };
+});
+const gallerySheets = chunk(galleryTiles, 8);
+const galleryPage = cursor;
+cursor += gallerySheets.length;
+const backPage = cursor;
 
 const L = fr
 	? { portfolio: 'Portfolio', contents: 'Sommaire', profile: 'Profil', gallery: 'Univers personnel', thanks: 'Merci.', printHint: 'Cmd/Ctrl + P → 儲存為 PDF（A4 橫向・勾選「背景圖形」）', print: '導出 PDF' }
@@ -135,14 +170,14 @@ const L = fr
 			</header>
 			<ol class="toc">
 				{
-					projects.map(({ entry }, i) => (
+					projects.map(({ entry, page }, i) => (
 						<li>
 							<span class="toc-no">{String(i + 1).padStart(2, '0')}</span>
 							<span class="toc-title">{entry.data.title}</span>
 							<span class="toc-meta">
 								{t.categoriesShort[entry.data.category]} · {entry.data.year}
 							</span>
-							<span class="toc-page">{String(pageOfProject(i)).padStart(2, '0')}</span>
+							<span class="toc-page">{String(page).padStart(2, '0')}</span>
 						</li>
 					))
 				}
@@ -155,79 +190,110 @@ const L = fr
 			</ol>
 		</section>
 
-		{/* —— 4. 作品頁：左文右圖 —— */}
+		{/* —— 4. 作品頁：左文右圖；細節圖超過 3 張時自動生成續頁（2×2 大圖） —— */}
 		{
-			projects.map(({ entry, Content }, i) => {
+			projects.map(({ entry, Content, cover, details, extras, page }, i) => {
 				const d = entry.data;
-				const imgs = imagesOf(slugOf(entry.id));
-				const details = imgs.details.slice(0, 3);
 				return (
-					<section class="sheet project" data-cat={d.category}>
-						<header class="sheet-head">
-							<span class="label">
-								{String(i + 1).padStart(2, '0')} — {t.categoriesShort[d.category]} · {d.year}
-								{d.status === 'in-progress' &&
-									` · ${t.project.statusInProgress}`}
-							</span>
-							<span class="label folio">{String(pageOfProject(i)).padStart(2, '0')}</span>
-						</header>
-						<div class="project-grid">
-							<div class="project-text">
-								<h2 class="project-title">{d.title}</h2>
-								<span class="swatch" aria-hidden="true" />
-								<p class="summary">{d.summary}</p>
-								<div class="specs">
-									{d.medium && <span>{d.medium}</span>}
-									{d.materials && <span>{d.materials}</span>}
-									{d.dimensions && <span>{d.dimensions}</span>}
-									{d.exhibitions?.map((e) => <span>{e}</span>)}
+					<>
+						<section class="sheet project" data-cat={d.category}>
+							<header class="sheet-head">
+								<span class="label">
+									{String(i + 1).padStart(2, '0')} — {t.categoriesShort[d.category]} · {d.year}
+									{d.status === 'in-progress' &&
+										` · ${t.project.statusInProgress}`}
+								</span>
+								<span class="label folio">{String(page).padStart(2, '0')}</span>
+							</header>
+							<div class="project-grid">
+								<div class="project-text">
+									<h2 class="project-title">{d.title}</h2>
+									<span class="swatch" aria-hidden="true" />
+									<p class="summary">{d.summary}</p>
+									<div class="specs">
+										{d.medium && <span>{d.medium}</span>}
+										{d.materials && <span>{d.materials}</span>}
+										{d.dimensions && <span>{d.dimensions}</span>}
+										{d.exhibitions?.map((e) => <span>{e}</span>)}
+									</div>
+									<div class="body">
+										<Content />
+									</div>
 								</div>
-								<div class="body">
-									<Content />
+								<div class="project-media">
+									{cover ? (
+										<Image src={cover} alt={d.title} class="media-main" width={1600} />
+									) : (
+										<div class="media-placeholder">
+											<span>{d.code}</span>
+										</div>
+									)}
+									{details.length > 0 && (
+										<div class="media-row">
+											{details.map((img) => (
+												<Image src={img} alt={d.title} width={800} />
+											))}
+										</div>
+									)}
 								</div>
 							</div>
-							<div class="project-media">
-								{imgs.cover ? (
-									<Image src={imgs.cover} alt={d.title} class="media-main" width={1600} />
-								) : (
-									<div class="media-placeholder">
-										<span>{d.code}</span>
-									</div>
-								)}
-								{details.length > 0 && (
-									<div class="media-row">
-										{details.map((img) => (
-											<Image src={img} alt={d.title} width={800} />
-										))}
-									</div>
-								)}
-							</div>
-						</div>
-					</section>
+						</section>
+						{extras.map((group, j) => (
+							<section class="sheet project" data-cat={d.category}>
+								<header class="sheet-head">
+									<span class="label">
+										{String(i + 1).padStart(2, '0')} — {d.title} · {fr ? 'suite' : 'continued'}
+									</span>
+									<span class="label folio">{String(page + 1 + j).padStart(2, '0')}</span>
+								</header>
+								<div class:list={['extra-grid', { single: group.length === 1 }]}>
+									{group.map((img) => (
+										<Image src={img} alt={d.title} width={1400} />
+									))}
+								</div>
+							</section>
+						))}
+					</>
 				);
 			})
 		}
 
-		{/* —— 5. Gallery 索引 —— */}
-		<section class="sheet">
-			<header class="sheet-head">
-				<span class="label">03 / {L.gallery}</span>
-				<span class="label folio">{String(galleryPage).padStart(2, '0')}</span>
-			</header>
-			<p class="gallery-note">{t.home.galleryText}</p>
-			<div class="gallery-index">
-				{
-					galleryTiles.map((tile) => (
-						<div class="g-item">
-							<span class="g-title">{tile.title}</span>
-							<span class="g-line">{tile.matiere}</span>
-							<span class="g-line">{tile.desc}</span>
-							<span class="g-date">{tile.date}</span>
-						</div>
-					))
-				}
-			</div>
-		</section>
+		{/* —— 5. Gallery：圖文馬賽克（每頁 8 格；無圖磚以其純色作底） —— */}
+		{
+			gallerySheets.map((sheetTiles, si) => (
+				<section class="sheet">
+					<header class="sheet-head">
+						<span class="label">
+							03 / {L.gallery}
+							{gallerySheets.length > 1 && ` · ${si + 1}/${gallerySheets.length}`}
+						</span>
+						<span class="label folio">{String(galleryPage + si).padStart(2, '0')}</span>
+					</header>
+					{si === 0 && <p class="gallery-note">{t.home.galleryText}</p>}
+					<div class:list={['gallery-mosaic', { tall: si > 0 }]}>
+						{sheetTiles.map((tile) => {
+							const img = galleryImageFor(tile.code);
+							return (
+								<div class="g-cell">
+									{img ? (
+										<Image src={img} alt={tile.title} class="g-img" width={800} />
+									) : (
+										<div
+											class="g-block"
+											style={`background:${tile.tone}; color:${tile.ink ?? '#f8f9fa'}`}
+										>
+											<span>{tile.code}</span>
+										</div>
+									)}
+									<span class="g-title">{tile.title}</span>
+									<span class="g-line">{tile.matiere} · {tile.date}</span>
+								</div>
+							);
+						})}
+					</div>
+				</section>
+			))
+		}
 
 		{/* —— 6. 封底 / 聯繫 —— */}
 		<section class="sheet back">
@@ -250,6 +316,12 @@ const L = fr
 				--ink-3: rgba(26, 26, 26, 0.45);
 				--mono: 'Roboto Mono', ui-monospace, monospace;
 				--sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+				/* 站點分類純色（gallery 磚的 tone 引用這些變量作佔位底色） */
+				--color-magenta: #e4007c;
+				--color-orange: #ff5c00;
+				--color-blue: #1f3cff;
+				--color-yellow: #ffd500;
+				--color-slate: #5b6b7f;
 			}
 
 			* {
@@ -558,41 +630,75 @@ const L = fr
 				object-fit: cover;
 			}
 
-			/* ——— Gallery 索引 ——— */
+			/* ——— Gallery：圖文馬賽克 ——— */
 			.gallery-note {
 				font-style: italic;
 				font-size: 9pt;
 				color: var(--ink-2);
-				margin: 0 0 8mm;
+				margin: 0 0 6mm;
 			}
-			.gallery-index {
+			.gallery-mosaic {
 				display: grid;
-				grid-template-columns: repeat(3, 1fr);
-				gap: 8mm 12mm;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 7mm 7mm;
 			}
-			.g-item {
+			.g-cell {
 				display: flex;
 				flex-direction: column;
-				gap: 0.8mm;
+				gap: 1.4mm;
+			}
+			.gallery-mosaic :global(img.g-img),
+			.g-block {
+				width: 100%;
+				height: 52mm;
+				object-fit: cover;
+			}
+			/* 首頁帶說明行時稍矮；後續整頁馬賽克可高一些 */
+			.gallery-mosaic.tall :global(img.g-img),
+			.gallery-mosaic.tall .g-block {
+				height: 60mm;
+			}
+			.g-block {
+				display: flex;
+				align-items: flex-end;
+				padding: 4mm;
+				box-sizing: border-box;
+			}
+			.g-block span {
+				font-family: var(--mono);
+				font-size: 6.5pt;
+				letter-spacing: 0.12em;
+				opacity: 0.75;
 			}
 			.g-title {
 				font-family: var(--mono);
 				font-weight: 700;
-				font-size: 9pt;
+				font-size: 8pt;
 				text-transform: uppercase;
 				letter-spacing: 0.02em;
 			}
 			.g-line {
 				font-family: var(--mono);
 				font-style: italic;
-				font-size: 7pt;
+				font-size: 6.5pt;
 				color: var(--ink-2);
 			}
-			.g-date {
-				font-family: var(--mono);
-				font-style: italic;
-				font-size: 7pt;
-				color: var(--ink-3);
+
+			/* ——— 作品續頁：2×2 大圖網格 ——— */
+			.extra-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				grid-auto-rows: 1fr;
+				gap: 8mm;
+				height: calc(100% - 16mm);
+			}
+			.extra-grid :global(img) {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+			.extra-grid.single {
+				grid-template-columns: 1fr;
 			}
 
 			/* ——— 封底 ——— */
