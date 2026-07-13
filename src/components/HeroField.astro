@@ -18,7 +18,7 @@
 		height: calc(100svh + var(--header-h));
 		z-index: 0;
 		pointer-events: none;
-		filter: blur(26px) saturate(1.15);
+		filter: blur(22px) saturate(1.15);
 		/* 下半緣漸變隱入白色畫布 */
 		-webkit-mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
 		mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
@@ -80,9 +80,17 @@
 		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		let rafId = 0;
 		let visible = true;
+		let frameNo = 0;
 		const start = performance.now();
 
 		const draw = () => {
+			// 光弧漂移極慢，30fps 足夠——隔幀渲染把全屏 CSS 模糊的重繪成本砍半，
+			// 讓主線程留給游標與流體
+			frameNo++;
+			if (!reduced && frameNo % 2 === 0) {
+				if (visible) rafId = requestAnimationFrame(draw);
+				return;
+			}
 			const t = reduced ? 12 : (performance.now() - start) / 1000;
 			ctx.clearRect(0, 0, w, h);
 			const cx = w * 0.5;

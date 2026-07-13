@@ -317,7 +317,8 @@ export function initFluidTitle(root: HTMLElement) {
 	GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
 	GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
 
-	const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+	// 1.5x 上限：流體本就柔霧狀，解析度差異不可見，Retina 上省 ~27% 像素量
+	const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
 	const updateTextCanvas = () => {
 		const cs = getComputedStyle(fallback);
