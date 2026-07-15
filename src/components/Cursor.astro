@@ -15,7 +15,7 @@
 </style>
 
 <style>
-	/* 流星拖尾畫布：鋪滿視口，畫在游標點之下 */
+	/* 流線拖尾畫布：鋪滿視口，畫在游標點之下 */
 	.cursor-trail {
 		position: fixed;
 		inset: 0;
@@ -25,7 +25,7 @@
 		pointer-events: none;
 	}
 
-	/* 游標本體：主題色圓點（流星頭） */
+	/* 游標本體：主題色圓點（筆尖） */
 	.cursor {
 		width: 8px;
 		height: 8px;
@@ -70,9 +70,13 @@
 </style>
 
 <script>
-	// 流星游標：主題色圓點 + 彗尾拖跡（移動時淡出的漸細軌跡），
-	// 點擊時迸出一簇火花（短暫的彩色速度線，像流星擦出的碎屑）。
-	// 效能：單一 rAF 循環同時驅動點的插值與畫布繪製，全部靜止後自動停機。
+	// 鋼筆流線游標：主題色圓點作筆尖（零延遲貼住指針），身後拖一條彈簧物理流線。
+	// 技法取自 Ksenia Kondrashova「satisfying curly cursor」——一串點各以彈簧＋阻尼
+	// 追隨前一點，指針事件只更新「目標座標」，拖尾幾何每幀由物理積分生成（與鼠標
+	// 採樣率解耦）；再以二次貝塞爾穿過相鄰中點，得到幀同步、連續順滑、且丟幀時能
+	// 自我平滑（彈簧插值補洞而非露出斷點）的筆鋒線。這正是「移動不順滑」的根治：
+	// 舊版把不等距的原始鼠標採樣點直接連直線，即使 60fps 也顯得一頓一頓。
+	// 點擊時保留一簇火花（速度線碎屑）作反饋。
 	const cursor = document.querySelector('.cursor');
 	const label = document.querySelector('.cursor-label');
 	const canvas = document.querySelector('.cursor-trail');
@@ -99,12 +103,7 @@
 		resize();
 		window.addEventListener('resize', resize);
 
-		// 髒矩形：只清除上一幀實際畫過的區域，不整面 clearRect（全屏畫布的大頭開銷）
-		let dirty: { x: number; y: number; w: number; h: number } | null = null;
-
-		let x = -100;
-		let y = -100;
-		let targetX = -100;
+		let targetX = -100; // 指針目標（筆尖零延遲貼此）
 		let targetY = -100;
 		let scale = 1;
 		let targetScale = 1;
@@ -113,13 +112,24 @@
 		let rafId = 0;
 		let visible = false;
 
-		// —— 彗尾：最近軌跡點（帶時間戳，繪製時按年齡漸隱漸細；封頂防長尾堆積）——
-		type TrailPoint = { x: number; y: number; t: number };
-		const TRAIL_LIFE = 380; // ms
-		const TRAIL_MAX = 26;
-		let trail: TrailPoint[] = [];
+		// —— 彈簧鏈拖尾 ——：POINTS 個節點依次追前一點；頭端粗、尾端漸細
+		type TrailNode = { x: number; y: number; dx: number; dy: number };
+		const POINTS = 24;
+		const SPRING = 0.42; // 彈簧剛度：越大越貼、越小越飄
+		const FRICTION = 0.48; // 阻尼：越小越靈動，越大越黏滯
+		const WIDTH = 0.16; // 線寬係數 WIDTH*(POINTS-i)*dpr：筆尖 ~3.8px 收到髮絲
+		const trail: TrailNode[] = new Array(POINTS);
+		for (let i = 0; i < POINTS; i++) trail[i] = { x: -100, y: -100, dx: 0, dy: 0 };
+		const collapseTrail = (px: number, py: number) => {
+			for (const p of trail) {
+				p.x = px;
+				p.y = py;
+				p.dx = 0;
+				p.dy = 0;
+			}
+		};
 
-		// —— 點擊火花 ——
+		// —— 點擊火花 ——：速度線碎屑，帶阻尼與微重力（點擊反饋保留）
 		type Spark = {
 			x: number;
 			y: number;
@@ -149,112 +159,87 @@
 			}
 		};
 
-		const paint = (now: number, dt: number) => {
+		const paint = (dt: number) => {
 			if (!ctx) return false;
-			// 只清上一幀的髒矩形
-			if (dirty) {
-				ctx.clearRect(dirty.x, dirty.y, dirty.w, dirty.h);
-				dirty = null;
-			}
-			let busy = false;
-			let minX = Infinity;
-			let minY = Infinity;
-			let maxX = -Infinity;
-			let maxY = -Infinity;
-			const mark = (px: number, py: number) => {
-				if (px < minX) minX = px;
-				if (py < minY) minY = py;
-				if (px > maxX) maxX = px;
-				if (py > maxY) maxY = py;
-			};
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-			// 鋼筆拖尾：單層實線，筆鋒由新到舊漸細漸隱（無辉光、無陰影）
-			trail = trail.filter((p) => now - p.t < TRAIL_LIFE);
-			if (trail.length > 1) {
-				busy = true;
+			// 彈簧鏈積分：trail[0] 以較弱彈簧追指針，其餘各自追前一節點
+			let moving = false;
+			for (let i = 0; i < POINTS; i++) {
+				const p = trail[i];
+				const prevX = i === 0 ? targetX : trail[i - 1].x;
+				const prevY = i === 0 ? targetY : trail[i - 1].y;
+				const k = i === 0 ? SPRING * 0.4 : SPRING;
+				p.dx = (p.dx + (prevX - p.x) * k) * FRICTION;
+				p.dy = (p.dy + (prevY - p.y) * k) * FRICTION;
+				p.x += p.dx;
+				p.y += p.dy;
+				if (Math.abs(p.dx) + Math.abs(p.dy) > 0.05) moving = true;
+			}
+
+			// 繪筆鋒線：自筆尖（指針）起，二次貝塞爾穿過相鄰節點中點，逐段收窄
+			if (visible) {
 				ctx.lineCap = 'round';
 				ctx.lineJoin = 'round';
 				ctx.strokeStyle = accent;
-				for (let i = 1; i < trail.length; i++) {
-					const a = trail[i - 1];
-					const b = trail[i];
-					const k = 1 - (now - b.t) / TRAIL_LIFE; // 0 舊 → 1 新
-					ctx.globalAlpha = Math.min(1, 0.9 * k + 0.1);
-					ctx.lineWidth = (0.4 + 2.2 * k) * dpr;
-					ctx.beginPath();
-					ctx.moveTo(a.x * dpr, a.y * dpr);
-					ctx.lineTo(b.x * dpr, b.y * dpr);
-					ctx.stroke();
-					mark(a.x * dpr, a.y * dpr);
-					mark(b.x * dpr, b.y * dpr);
-				}
 				ctx.globalAlpha = 1;
+				ctx.beginPath();
+				ctx.moveTo(targetX * dpr, targetY * dpr);
+				for (let i = 0; i < POINTS - 1; i++) {
+					const xc = 0.5 * (trail[i].x + trail[i + 1].x) * dpr;
+					const yc = 0.5 * (trail[i].y + trail[i + 1].y) * dpr;
+					ctx.quadraticCurveTo(trail[i].x * dpr, trail[i].y * dpr, xc, yc);
+					ctx.lineWidth = WIDTH * (POINTS - i) * dpr;
+					ctx.stroke();
+				}
+				ctx.lineTo(trail[POINTS - 1].x * dpr, trail[POINTS - 1].y * dpr);
+				ctx.stroke();
 			}
 
-			// 火花（點擊效果保留）：速度線碎屑，帶阻尼與微重力
+			// 火花（點擊效果保留）：速度線碎屑
+			let sparksAlive = false;
 			if (sparks.length) {
-				busy = true;
 				const step = dt / 16.7;
+				ctx.lineWidth = 1.6 * dpr;
 				for (const s of sparks) {
 					s.age += dt;
 					s.x += s.vx * step;
 					s.y += s.vy * step;
 					s.vx *= 0.94;
 					s.vy = s.vy * 0.94 + 0.05 * step;
-					const k = 1 - s.age / s.life;
-					if (k <= 0) continue;
+					const kk = 1 - s.age / s.life;
+					if (kk <= 0) continue;
 					ctx.strokeStyle = s.color;
-					ctx.globalAlpha = Math.max(0, k);
-					ctx.lineWidth = 1.6 * dpr;
-					const tailX = (s.x - s.vx * 2.4) * dpr;
-					const tailY = (s.y - s.vy * 2.4) * dpr;
+					ctx.globalAlpha = Math.max(0, kk);
 					ctx.beginPath();
 					ctx.moveTo(s.x * dpr, s.y * dpr);
-					ctx.lineTo(tailX, tailY);
+					ctx.lineTo((s.x - s.vx * 2.4) * dpr, (s.y - s.vy * 2.4) * dpr);
 					ctx.stroke();
-					mark(s.x * dpr, s.y * dpr);
-					mark(tailX, tailY);
 				}
 				ctx.globalAlpha = 1;
 				sparks = sparks.filter((s) => s.age < s.life);
+				sparksAlive = sparks.length > 0;
 			}
 
-			// 記錄本幀髒矩形（含線寬余量），下一幀只清這塊
-			if (busy && minX < Infinity) {
-				const pad = 12 * dpr;
-				dirty = {
-					x: minX - pad,
-					y: minY - pad,
-					w: maxX - minX + pad * 2,
-					h: maxY - minY + pad * 2,
-				};
-			}
-
-			return busy;
+			return moving || sparksAlive;
 		};
 
 		const loop = (now: number) => {
 			const dt = lastFrame ? Math.min(48, now - lastFrame) : 16.7;
 			lastFrame = now;
 
-			// 流星頭零延遲貼住指針（拖尾負責「流」的感覺）；只有縮放做插值
-			x = targetX;
-			y = targetY;
+			// 筆尖零延遲貼住指針（拖尾負責「流」的感覺）；只有縮放做插值
 			scale += (targetScale - scale) * 0.18;
-			cursor.style.transform = `translate3d(${x - 4}px, ${y - 4}px, 0) scale(${scale.toFixed(3)})`;
+			cursor.style.transform = `translate3d(${targetX - 4}px, ${targetY - 4}px, 0) scale(${scale.toFixed(3)})`;
 			if (label instanceof HTMLElement) {
-				label.style.transform = `translate3d(${x + 18}px, ${y + 18}px, 0)`;
+				label.style.transform = `translate3d(${targetX + 18}px, ${targetY + 18}px, 0)`;
 			}
 
-			const painting = reduced ? false : paint(now, dt);
+			const busy = reduced ? false : paint(dt);
+			const scaleSettled = Math.abs(targetScale - scale) < 0.01;
 
-			const settled =
-				Math.abs(targetX - x) < 0.1 &&
-				Math.abs(targetY - y) < 0.1 &&
-				Math.abs(targetScale - scale) < 0.01 &&
-				!painting;
-
-			if (settled) {
+			// 全部安定（拖尾收攏、火花散盡、縮放到位）才停機；下次指針事件喚醒
+			if (!busy && scaleSettled) {
 				rafId = 0;
 				lastFrame = 0;
 			} else {
@@ -274,18 +259,18 @@
 		window.addEventListener(
 			'pointermove',
 			(e) => {
+				const jx = e.clientX - targetX;
+				const jy = e.clientY - targetY;
 				targetX = e.clientX;
 				targetY = e.clientY;
 				if (!visible) {
 					visible = true;
-					x = targetX;
-					y = targetY;
+					collapseTrail(targetX, targetY);
 					document.documentElement.classList.add('has-custom-cursor');
 					cursor.style.opacity = '1';
-				}
-				if (!reduced) {
-					trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
-					if (trail.length > TRAIL_MAX) trail.shift();
+				} else if (jx * jx + jy * jy > 260 * 260) {
+					// 指針大跳（重入視口／瞬移）：收攏拖尾，避免橫掃整屏的長線
+					collapseTrail(targetX, targetY);
 				}
 				wake();
 			},
