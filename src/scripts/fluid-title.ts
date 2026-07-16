@@ -362,6 +362,7 @@ export function initFluidTitle(root: HTMLElement) {
 	const pointer = { x: 0, y: 0, dx: 0, dy: 0, moved: false };
 	let rafId = 0;
 	let destroyed = false;
+	let paused = false; // 離開視口 / 分頁隱藏時整套模擬停機（FBO 狀態保留，回來無縫續播）
 
 	const initFBOs = () => {
 		const w = Math.max(64, Math.floor(0.5 * heroEl.clientWidth));
@@ -450,7 +451,8 @@ export function initFluidTitle(root: HTMLElement) {
 		GL.uniform1i(pressureProgram.uniforms.u_text_texture, 0);
 		GL.uniform2f(pressureProgram.uniforms.u_texel, velocity.texelSizeX, velocity.texelSizeY);
 		GL.uniform1i(pressureProgram.uniforms.u_divergence_texture, divergence.attach(1));
-		for (let i = 0; i < 10; i++) {
+		// 壓力迭代 10→8：主導成本項，對這種柔霧墨跡的觀感差異不可見，卻省下每幀兩趟全屏 blit
+		for (let i = 0; i < 8; i++) {
 			GL.uniform1i(pressureProgram.uniforms.u_pressure_texture, pressure.read().attach(2));
 			blit(pressure.write());
 			pressure.swap();
@@ -490,7 +492,7 @@ export function initFluidTitle(root: HTMLElement) {
 		GL.uniform1i(outputProgram.uniforms.u_output_texture, outputColor.read().attach(1));
 		blit(null);
 
-		rafId = requestAnimationFrame(render);
+		rafId = paused ? 0 : requestAnimationFrame(render);
 	};
 
 	// —— 事件 ——
@@ -512,10 +514,45 @@ export function initFluidTitle(root: HTMLElement) {
 		}
 	};
 
+	// —— 視口 / 分頁可見性驅動的暫停 ——
+	// 舊版 render 無條件自我排程：滾動到下方閱讀 Profile / Practice / Gallery 時，
+	// 這套 WebGL 流體仍在畫面外全速運轉（每幀 8 次壓力迭代 + 多趟全屏 blit），
+	// 與滾動搶佔主線程 —— 正是「卡頓」的主因。離開即停、回來即續。
+	let heroInView = true;
+	let pageHidden = false;
+	const applyPause = () => {
+		const next = pageHidden || !heroInView;
+		if (next === paused) return;
+		paused = next;
+		if (paused) {
+			cancelAnimationFrame(rafId);
+			rafId = 0;
+		} else if (!destroyed && !rafId) {
+			rafId = requestAnimationFrame(render);
+		}
+	};
+
+	const io = new IntersectionObserver(
+		([entry]) => {
+			heroInView = entry.isIntersecting;
+			applyPause();
+		},
+		{ threshold: 0 }
+	);
+	io.observe(heroEl);
+
+	const onVisibility = () => {
+		pageHidden = document.hidden;
+		applyPause();
+	};
+	document.addEventListener('visibilitychange', onVisibility);
+
 	function destroy() {
 		if (destroyed) return;
 		destroyed = true;
 		cancelAnimationFrame(rafId);
+		io.disconnect();
+		document.removeEventListener('visibilitychange', onVisibility);
 		heroEl.removeEventListener('mousemove', onMouseMove);
 		heroEl.removeEventListener('touchmove', onTouchMove);
 		window.removeEventListener('resize', onResize);

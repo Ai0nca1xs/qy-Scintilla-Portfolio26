@@ -84,10 +84,10 @@
 		const start = performance.now();
 
 		const draw = () => {
-			// 光弧漂移極慢，30fps 足夠——隔幀渲染把全屏 CSS 模糊的重繪成本砍半，
-			// 讓主線程留給游標與流體
+			// 光弧漂移極慢，~20fps 足夠——每三幀才重繪一次，把全屏 blur(22px) 的
+			// 重新合成頻率再降三分之一，主線程留給游標與流體
 			frameNo++;
-			if (!reduced && frameNo % 2 === 0) {
+			if (!reduced && frameNo % 3 !== 0) {
 				if (visible) rafId = requestAnimationFrame(draw);
 				return;
 			}
