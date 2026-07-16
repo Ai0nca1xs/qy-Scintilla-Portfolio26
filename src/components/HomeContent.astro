@@ -56,6 +56,10 @@ const projectsFor = (cats: readonly string[]) =>
 			<ul class="cv-list">
 				{t.home.cvExperience.map((line) => <li>{line}</li>)}
 			</ul>
+			<span class="metadata cv-label">Skills</span>
+			<ul class="cv-list">
+				{t.home.cvSkills.map((line) => <li>{line}</li>)}
+			</ul>
 		</div>
 	</div>
 </section>

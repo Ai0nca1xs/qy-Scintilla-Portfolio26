@@ -29,6 +29,7 @@ export interface Dict {
 		introHtml: string;
 		cvEducation: string[];
 		cvExperience: string[];
+		cvSkills: string[];
 		cvMeta: string[];
 		practiceLabel: string;
 		practiceIntroHtml: string;
@@ -89,7 +90,7 @@ export const dict: Record<Lang, Dict> = {
 				'I am <span class="hover-bold">Qianyu&nbsp;He</span><span class="hover-bold">, a visual designer</span> working with <strong>colour</strong> as method — across <strong>light</strong>, <strong>space</strong> and <strong>image</strong>. From architectural lighting to wearable objects and editorial systems, my practice chases the <em>scintilla</em>: the fleeting spark where a concept turns into matter.',
 			cvEducation: [
 				'2025— · EBABX, Bordeaux — Design: graphic & editorial, space, scenography & object',
-				'2021 · China Academy of Art (CAA), Hangzhou — BA, Colour Design (Synthetic Design)',
+				'2017–21 · China Academy of Art (CAA), Hangzhou — BA, Colour Design (Synthetic Design)',
 			],
 			cvExperience: [
 				'2026 · AQUABAL — Capc musée d’art contemporain de Bordeaux · wearable «jellyfish», with Lucas Tortolano',
@@ -97,6 +98,10 @@ export const dict: Record<Lang, Dict> = {
 				'2021–22 · Reel Light Environment — colour designer',
 				'2019–20 · Colour & cognition — visual programme for autistic children',
 				'2019 · Hangzhou Asian Games — campus light installations',
+			],
+			cvSkills: [
+				'Visual communication · Narrative · Conceptual coherence · Cross-media production',
+				'Generative AI — image, sound, creative code (vibe coding) · ongoing R&D',
 			],
 			cvMeta: ['Based in Bordeaux, FR', 'Open to internships & freelance', 'ZH · FR · EN · JP · KO'],
 			practiceLabel: 'Practice | What I Do',
@@ -186,7 +191,7 @@ export const dict: Record<Lang, Dict> = {
 				"Je suis <span class='hover-bold'>Qianyu&nbsp;He</span><span class='hover-bold'>, designer visuelle</span> qui travaille la <strong>couleur</strong> comme méthode — entre <strong>lumière</strong>, <strong>espace</strong> et <strong>image</strong>. De l'éclairage architectural aux objets portables et aux systèmes éditoriaux, ma pratique cherche la <em>scintilla</em> : l'étincelle fugace où un concept devient matière.",
 			cvEducation: [
 				'2025— · EBABX, Bordeaux — Design : graphique & édition, espace, scénographie & objet',
-				'2021 · Académie des Beaux-Arts de Chine (CAA), Hangzhou — Licence, Design de couleur (design synthétique)',
+				'2017–21 · Académie des Beaux-Arts de Chine (CAA), Hangzhou — Licence, Design de couleur (design synthétique)',
 			],
 			cvExperience: [
 				'2026 · AQUABAL — Capc musée d’art contemporain de Bordeaux · dispositif «méduse», avec Lucas Tortolano',
@@ -194,6 +199,10 @@ export const dict: Record<Lang, Dict> = {
 				'2021–22 · Reel Light Environment — designer couleur',
 				'2019–20 · Couleur & cognition — programme visuel pour enfants autistes',
 				'2019 · Jeux Asiatiques de Hangzhou — installations lumineuses de campus',
+			],
+			cvSkills: [
+				'Communication visuelle · Récit · Cohérence conceptuelle · Production cross-média',
+				'IA générative — image, son, code créatif (vibe coding) · veille & expérimentation',
 			],
 			cvMeta: ['Basée à Bordeaux, FR', 'Ouverte aux stages & freelance', 'ZH · FR · EN · JP · KO'],
 			practiceLabel: 'Pratique | Ce que je fais',
