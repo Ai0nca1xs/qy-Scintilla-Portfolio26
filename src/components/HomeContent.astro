@@ -3,7 +3,7 @@
 // 結構：Hero（流體墨水標題）→ 概念句 → 01 Profile → 02 Practice（緊湊三列）→ 03 Gallery
 import { getCollection } from 'astro:content';
 import SplashIntro from '@/components/SplashIntro.astro';
-import AetherClouds from '@/components/AetherClouds.astro';
+import HeroField from '@/components/HeroField.astro';
 import FluidTitle from '@/components/FluidTitle.astro';
 import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
 
@@ -27,7 +27,7 @@ const projectsFor = (cats: readonly string[]) =>
 <SplashIntro />
 
 <section class="hero-section">
-	<AetherClouds />
+	<HeroField />
 
 	{/* 流體墨水標題：畫布鋪滿 hero；標題與 meta 句一同積墨顯影 */}
 	<FluidTitle meta={t.home.heroMeta} />
@@ -41,10 +41,11 @@ const projectsFor = (cats: readonly string[]) =>
 </section>
 
 <section class="intro-section">
-	<span class="section-label">01 / Profile</span>
+	{/* 煉金三元素符印：☿ 汞＝心智（其人） */}
+	<span class="section-label" data-glyph="☿">01 / Profile</span>
 	<div class="intro-grid">
 		<p class="lead-text" data-text-motion set:html={t.home.introHtml} />
-		<div class="cv-panel">
+		<div class="cv-panel" data-settle>
 			<div class="cv-meta">
 				{t.home.cvMeta.map((line) => <span class="metadata">{line}</span>)}
 			</div>
@@ -65,11 +66,12 @@ const projectsFor = (cats: readonly string[]) =>
 </section>
 
 <section class="practice-section">
-	<span class="section-label">02 / {t.home.practiceLabel}</span>
+	{/* △ 火＝轉化（工作） */}
+	<span class="section-label" data-glyph="△">02 / {t.home.practiceLabel}</span>
 	<div class="practice-grid">
 		{/* 左列：緊湊的定位說明 */}
 		<div class="practice-intro">
-			<p class="practice-lead" set:html={t.home.practiceIntroHtml} />
+			<p class="practice-lead" data-settle set:html={t.home.practiceIntroHtml} />
 		</div>
 
 		{/* 中列 + 右列：三大領域及其細分作品 */}
@@ -113,9 +115,15 @@ const projectsFor = (cats: readonly string[]) =>
 </section>
 
 <section class="gallery-section">
-	<span class="section-label">03 / {t.home.galleryLabel}</span>
-	<p class="gallery-text" data-type-shuffle>{t.home.galleryText}</p>
-	<a href={localizePath(lang, '/gallery')} class="title-calx gallery-cta">{t.home.galleryCta}</a>
+	{/* ▽ 水＝感性（個人宇宙） */}
+	<span class="section-label" data-glyph="▽">03 / {t.home.galleryLabel}</span>
+	<p class="gallery-text" data-type-shuffle data-settle>{t.home.galleryText}</p>
+	<a
+		href={localizePath(lang, '/gallery')}
+		class="title-calx gallery-cta"
+		data-settle
+		style="--settle-i: 1">{t.home.galleryCta}</a
+	>
 </section>
 
 {/* 懸停預覽：X 固定於列表右側，遮罩沿 Y 軸跟隨游標展開；圖版左上角寫具體 tag */}

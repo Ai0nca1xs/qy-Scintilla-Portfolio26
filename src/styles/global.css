@@ -31,6 +31,7 @@
   --color-amber: #ffbe0b;
   --color-flame: #fb5607;
   --color-violet: #8338ec;
+  --color-cyan: #00aeef; /* 試劑青：三色主題（桃紅·青·黃）的冷極 */
   /* 交互強調色：hover / 展開線 / 可點暗示統一使用（2026-07 由橙 #FB5607 換為桃紅）*/
   --color-accent: #ff0048;
 
@@ -271,6 +272,60 @@ b {
   letter-spacing: 0.12em;
   opacity: 0.65;
   margin-bottom: var(--space-lg);
+}
+
+/* 煉金符號學：區塊標籤尾綴一枚符印（data-glyph 指定），如同實驗記錄裡的元素記號。
+   三元素（tria prima）對應站點三章：☿ 汞（心智/其人）· △ 火（工作/轉化）· ▽ 水（感性/宇宙）。
+   符印以主題色極慢自轉——印章在時間裡緩慢旋轉的意象；減弱動效時靜止 */
+.section-label[data-glyph]::after {
+  content: attr(data-glyph);
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-accent);
+  opacity: 0.7;
+  animation: glyph-turn 48s linear infinite;
+}
+
+@keyframes glyph-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-label[data-glyph]::after {
+    animation: none;
+  }
+}
+
+/* 沉澱式入場（micro-interaction：物質冷卻、沉澱的時間性）——
+   [data-settle] 元素初始懸浮於 16px 高處、微失焦，進入視口後以「顯影」曲線
+   緩慢落定（0.8s，非線性跳轉）；--settle-i 令同組元素依序沉降（各遲 90ms）。
+   僅在 JS 就緒（html.settle-ready）後才隱藏初始態：腳本失效時內容照常可見 */
+html.settle-ready [data-settle] {
+  opacity: 0;
+  transform: translateY(16px);
+  filter: blur(5px);
+}
+
+html.settle-ready [data-settle].settled {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+  transition:
+    opacity 0.8s var(--ease-develop),
+    transform 0.8s var(--ease-develop),
+    filter 0.8s var(--ease-develop);
+  transition-delay: calc(var(--settle-i, 0) * 90ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.settle-ready [data-settle] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
 }
 
 .page-header {

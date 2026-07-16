@@ -2,7 +2,7 @@
 // 首頁標題「流體墨水」互動（Ksenia Kondrashova «WebGL Fluid Simulation With Your Text» 移植，
 // 基於 Pavel Dobryakov 的 WebGL Fluid Simulation）。
 // 畫布鋪滿整個 hero：游標在任意處攪動墨水，字形「留住」墨水而漸漸顯影；
-// 未互動時自動巡遊預覽。輸出帶 alpha，無墨處透明，透出底層 AetherClouds 雲氣。
+// 未互動時自動巡遊預覽。輸出帶 alpha，無墨處透明，透出底層 HeroField 光弧。
 // 若 WebGL / 浮點紋理不支援或初始化失敗，保留純黑 DOM 標題（.ft-fallback），永不開天窗。
 interface Props {
 	text?: string;
@@ -19,7 +19,7 @@ const { text = 'SCINTILLA.', meta = '' } = Astro.props;
 </div>
 
 <style>
-	/* 鋪滿 hero 的舞台層：位於 AetherClouds 之上、hero 內容之下，不攔截任何指針事件 */
+	/* 鋪滿 hero 的舞台層：位於 HeroField 光弧之上、hero 內容之下，不攔截任何指針事件 */
 	.fluid-stage {
 		position: absolute;
 		inset: 0;

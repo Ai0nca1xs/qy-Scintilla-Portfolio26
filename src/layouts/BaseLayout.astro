@@ -39,12 +39,13 @@ const lang = getLangFromUrl(Astro.url);
 		<SmoothScroll />
 
 		<script>
-			import { initTextMotion, initTypeShuffle } from '@/scripts/text-motion';
+			import { initTextMotion, initTypeShuffle, initSettle } from '@/scripts/text-motion';
 
 			// 文字載入動效（reveal 顯影系統已退役，統一由 text-motion 承擔）
 			document.addEventListener('astro:page-load', () => {
 				initTextMotion(); // 逐詞滾動顯現（data-text-motion）
 				initTypeShuffle(); // 字符翻牌解碼（data-type-shuffle）
+				initSettle(); // 沉澱式入場（data-settle）
 			});
 
 			// 圖片保護（威懾層）：作品圖上禁用右鍵選單，配合 CSS 禁拖拽。

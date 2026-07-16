@@ -178,3 +178,30 @@ export function initTypeShuffle(root: ParentNode = document) {
 	targets.forEach((el) => observer.observe(el));
 	document.addEventListener('astro:before-swap', () => observer.disconnect(), { once: true });
 }
+
+/**
+ * 沉澱式入場（data-settle）：元素初始懸浮微失焦，進入視口後緩慢「落定」——
+ * 模擬物質冷卻、沉澱的時間性（非線性瞬間跳轉）。動畫本體在 global.css，
+ * 這裡只負責：標記 JS 就緒（html.settle-ready，腳本失效時內容照常可見）＋
+ * IntersectionObserver 觸發 .settled。減弱動效時不啟用（CSS 同步豁免）。
+ */
+export function initSettle(root: ParentNode = document) {
+	const targets = Array.from(root.querySelectorAll<HTMLElement>('[data-settle]:not(.settled)'));
+	if (!targets.length) return;
+	if (reducedMotion() || !('IntersectionObserver' in window)) return;
+
+	document.documentElement.classList.add('settle-ready');
+
+	const observer = new IntersectionObserver(
+		(obsEntries) => {
+			for (const entry of obsEntries) {
+				if (!entry.isIntersecting) continue;
+				observer.unobserve(entry.target);
+				entry.target.classList.add('settled');
+			}
+		},
+		{ threshold: 0.12 }
+	);
+	targets.forEach((el) => observer.observe(el));
+	document.addEventListener('astro:before-swap', () => observer.disconnect(), { once: true });
+}

@@ -1,0 +1,147 @@
+---
+// Hero 背景「光弧」：白底之上，數道彩色光弧繞中心緩慢自轉、呼吸開合——
+// 純自動運動（無游標交互），Canvas 半解析度描邊 + CSS 大半徑模糊 → 柔和發光弧帶。
+// 色相對齊站點三色主題（桃紅 #ff0048 · 青 #00aeef · 黃 #ffd400）＋玫瑰/紫的微量痕跡色，
+// 弧帶彼此不做減色疊印，保持每道弧的色相乾淨清晰（實驗室試劑般的分離色層）。
+// 畫布撐滿首屏（含透明 header 之後，不留白邊）；下半緣以漸變遮罩隱入白色。
+// 效能：DPR 減採樣、每 3 幀重繪（~20fps）、離開視口暫停、減弱動效只渲染一幀。
+---
+
+<canvas class="hero-field" data-hero-field aria-hidden="true"></canvas>
+
+<style>
+	/* 滿版首屏：向上越過透明 header（高度隨斷點變化），寬滿 100vw，無白邊 */
+	.hero-field {
+		position: absolute;
+		top: calc(var(--header-h) * -1);
+		left: 50%;
+		transform: translateX(-50%);
+		width: 100vw;
+		height: calc(100svh + var(--header-h));
+		z-index: 0;
+		pointer-events: none;
+		filter: blur(22px) saturate(1.15);
+		/* 下半緣漸變隱入白色畫布 */
+		-webkit-mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
+		mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
+	}
+</style>
+
+<script>
+	// 光弧參數：半徑遞增、轉速交替方向、弧長呼吸。
+	// 色序：主題桃紅 → 玫瑰 → 青 → 黃 → 紫（痕跡）→ 淡粉，彩度清晰、不混濁
+	const ARC_COLORS = [
+		'rgba(255, 0, 72, 0.36)', // 桃紅（主題色）
+		'rgba(255, 170, 212, 0.4)', // 玫瑰粉
+		'rgba(0, 174, 239, 0.3)', // 青（試劑藍）
+		'rgba(255, 212, 0, 0.3)', // 黃（硫黃）
+		'rgba(131, 56, 236, 0.2)', // 紫（痕跡量）
+		'rgba(253, 197, 245, 0.36)', // 淡粉
+	];
+
+	function initHeroField() {
+		const canvas = document.querySelector('[data-hero-field]');
+		if (!(canvas instanceof HTMLCanvasElement)) return;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+
+		// 半解析度渲染（CSS blur 已負責柔焦）
+		const SCALE = 0.5;
+		let w = 0;
+		let h = 0;
+
+		const resize = () => {
+			w = Math.max(1, Math.floor(canvas.clientWidth * SCALE));
+			h = Math.max(1, Math.floor(canvas.clientHeight * SCALE));
+			canvas.width = w;
+			canvas.height = h;
+		};
+		resize();
+		window.addEventListener('resize', resize);
+
+		type Arc = {
+			radius: number; // 相對 min(w,h) 的半徑係數
+			squish: number; // 縱向壓扁比
+			speed: number; // 自轉速度（rad/s）
+			phase: number;
+			span: number; // 基礎弧長（rad）
+			breathe: number; // 弧長呼吸頻率
+			width: number; // 相對線寬係數
+			color: string;
+		};
+		const arcs: Arc[] = ARC_COLORS.map((color, i) => ({
+			radius: 0.2 + i * 0.085,
+			squish: 0.58 + 0.06 * Math.sin(i * 2.1),
+			speed: (0.04 + 0.018 * i) * (i % 2 === 0 ? 1 : -1),
+			phase: i * 1.7,
+			span: 1.1 + 0.35 * (i % 3),
+			breathe: 0.12 + 0.04 * i,
+			width: 0.045 + 0.012 * (i % 3),
+			color,
+		}));
+
+		const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		let rafId = 0;
+		let visible = true;
+		let frameNo = 0;
+		const start = performance.now();
+
+		const draw = () => {
+			// 光弧漂移極慢，~20fps 足夠——每三幀才重繪一次，把全屏 blur(22px) 的
+			// 重新合成頻率再降三分之一，主線程留給游標與流體
+			frameNo++;
+			if (!reduced && frameNo % 3 !== 0) {
+				if (visible) rafId = requestAnimationFrame(draw);
+				return;
+			}
+			const t = reduced ? 12 : (performance.now() - start) / 1000;
+			ctx.clearRect(0, 0, w, h);
+			const cx = w * 0.5;
+			const cy = h * 0.46;
+			const base = Math.min(w, h);
+			ctx.lineCap = 'round';
+			for (const a of arcs) {
+				const rot = a.phase + t * a.speed;
+				const span = a.span + 0.6 * Math.sin(t * a.breathe + a.phase);
+				ctx.save();
+				ctx.translate(cx, cy);
+				ctx.rotate(rot);
+				ctx.scale(1, a.squish);
+				ctx.beginPath();
+				ctx.arc(0, 0, base * a.radius, 0, Math.max(0.4, span));
+				ctx.strokeStyle = a.color;
+				ctx.lineWidth = base * a.width;
+				ctx.stroke();
+				ctx.restore();
+			}
+			if (!reduced && visible) rafId = requestAnimationFrame(draw);
+		};
+
+		// 離開視口暫停，回到視口續播
+		const io = new IntersectionObserver(
+			([entry]) => {
+				visible = entry.isIntersecting;
+				if (visible && !reduced && !rafId) rafId = requestAnimationFrame(draw);
+				if (!visible) {
+					cancelAnimationFrame(rafId);
+					rafId = 0;
+				}
+			},
+			{ threshold: 0 }
+		);
+		io.observe(canvas);
+		draw();
+
+		document.addEventListener(
+			'astro:before-swap',
+			() => {
+				cancelAnimationFrame(rafId);
+				io.disconnect();
+				window.removeEventListener('resize', resize);
+			},
+			{ once: true }
+		);
+	}
+
+	document.addEventListener('astro:page-load', initHeroField);
+</script>

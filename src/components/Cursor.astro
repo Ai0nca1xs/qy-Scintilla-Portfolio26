@@ -91,8 +91,8 @@
 		const accent =
 			getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() ||
 			'#ff0048';
-		// 火花色板：主題色 + 玫瑰 / 琥珀 / 淡粉
-		const SPARK_COLORS = [accent, '#ffaad4', '#ffbe0b', '#fdc5f5'];
+		// 火花色板：三色主題（桃紅 · 青 · 黃）＋ 玫瑰——與 hero 光弧同一套試劑色
+		const SPARK_COLORS = [accent, '#00aeef', '#ffd400', '#ffaad4'];
 
 		// 拖尾是運動中的細線，1.5x 解析度肉眼無差，成本省近一半
 		const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
