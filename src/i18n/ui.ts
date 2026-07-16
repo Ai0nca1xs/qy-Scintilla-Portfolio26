@@ -74,7 +74,7 @@ export const dict: Record<Lang, Dict> = {
 			title: 'Scintilla',
 			tagline: "Qianyu's digital space",
 			description:
-				'Scintilla — the digital space and design archive of Qianyu, multidisciplinary designer.',
+				'Scintilla — the portfolio and digital space of Qianyu He, designer and artist. One concept carried from research to installation, across graphic, space, object, sound, image and writing.',
 		},
 		nav: {
 			home: 'Home',
@@ -85,9 +85,9 @@ export const dict: Record<Lang, Dict> = {
 		home: {
 			pageTitle: "Scintilla — Qianyu's digital space",
 			heroMeta: 'Residue of a thousand burnt eras',
-			concept: 'A physical translation of poetics through light, space, and material.',
+			concept: 'One concept, carried from research to matter.',
 			introHtml:
-				'I am <span class="hover-bold">Qianyu&nbsp;He</span><span class="hover-bold">, a visual designer</span> working with <strong>colour</strong> as method — across <strong>light</strong>, <strong>space</strong> and <strong>image</strong>. From architectural lighting to wearable objects and editorial systems, my practice chases the <em>scintilla</em>: the fleeting spark where a concept turns into matter.',
+				'I am <span class="hover-bold">Qianyu&nbsp;He</span><span class="hover-bold">, a designer and artist</span> who works by <strong>conceptual coherence</strong>: one idea governs the whole process, carried from cultural research and <strong>narrative</strong> to visual form and <em>physical installation</em>. My range — graphic, space, object, sound, image, <strong>writing</strong> — is not scattered skills but a single method holding many media together.',
 			cvEducation: [
 				'2025— · EBABX, Bordeaux — Design: graphic & editorial, space, scenography & object',
 				'2017–21 · China Academy of Art (CAA), Hangzhou — BA, Colour Design (Synthetic Design)',
@@ -101,38 +101,39 @@ export const dict: Record<Lang, Dict> = {
 			],
 			cvSkills: [
 				'Visual communication · Narrative · Conceptual coherence · Cross-media production',
-				'Generative AI — image, sound, creative code (vibe coding) · ongoing R&D',
+				'Colour & cognition · Light & sensory installation · Editorial & narrative design',
+				'Generative AI — image, sound, creative code (vibe coding), explored as research',
 			],
 			cvMeta: ['Based in Bordeaux, FR', 'Open to internships & freelance', 'ZH · FR · EN · JP · KO'],
-			practiceLabel: 'Practice | What I Do',
+			practiceLabel: 'Practice | Method & Range',
 			practiceIntroHtml:
-				'I design with <strong>colour</strong> as a method — across print, light, object and space. Each domain below is one wavelength of the same spectrum.',
+				'Every project begins with a <strong>concept</strong> and is carried end to end. The domains below are not separate skills but one <strong>method</strong> — narrative and conceptual unity — expressed in different media.',
 			domains: [
 				{
 					title: 'Graphic & Image',
 					blurb:
-						'Editorial systems, typography and photography — colour used as a signature, print as a site of memory.',
+						'Editorial and image systems where a narrative sets the rules — typography, colour and photography as carriers of memory and meaning.',
 					cats: ['GRA', 'PHO'],
 					lens: 'GRA',
 				},
 				{
 					title: 'Installation & Object',
 					blurb:
-						'Light, colour and matter in dialogue — interactive installations and objects that probe sensory perception.',
+						'Concepts made physical — light, colour and matter staged as installations and objects that act on perception and cognition.',
 					cats: ['INS', 'PRD'],
 					lens: 'INS',
 				},
 				{
 					title: 'Scenography & Worldbuilding',
 					blurb:
-						'Narrative spaces and speculative universes — from trend scenography to worldbuilding as a design practice.',
+						'Narrative spaces and constructed worlds — scenography, worldbuilding and writing as one speculative practice.',
 					cats: ['SCE'],
 					lens: 'SCE',
 				},
 			],
-			galleryLabel: 'Personal Aesthetic',
-			galleryText: 'Audio, Painting, Photography, Writing, Music Sharing.',
-			galleryCta: 'ENTER DIGITAL GALLERY ↗',
+			galleryLabel: 'Personal Universe',
+			galleryText: 'A personal universe — image, sound, writing and worldbuilding, gathered as one sensibility.',
+			galleryCta: 'ENTER THE UNIVERSE ↗',
 		},
 		project: {
 			pageTitle: 'Projects — Scintilla',
@@ -165,7 +166,7 @@ export const dict: Record<Lang, Dict> = {
 			email: 'felicettec341a@gmail.com',
 			blurbHtml:
 				'Based in Bordeaux, France.<br />Open to internships, freelance opportunities and collaborations.',
-			role: 'Multidisciplinary designer — colour, light & narrative',
+			role: 'Designer & artist — one concept, from research to matter',
 			location: 'Bordeaux, France',
 			cvButton: 'Download CV',
 		},
@@ -175,7 +176,7 @@ export const dict: Record<Lang, Dict> = {
 			title: 'Scintilla',
 			tagline: "L'espace numérique de Qianyu",
 			description:
-				"Scintilla — l'espace numérique et l'archive de design de Qianyu, designer pluridisciplinaire.",
+				"Scintilla — le portfolio et l'espace numérique de Qianyu He, designer et artiste. Un concept porté de la recherche à l'installation, à travers graphisme, espace, objet, son, image et écriture.",
 		},
 		nav: {
 			home: 'Accueil',
@@ -186,9 +187,9 @@ export const dict: Record<Lang, Dict> = {
 		home: {
 			pageTitle: "Scintilla — l'espace numérique de Qianyu",
 			heroMeta: 'Residue of a thousand burnt eras',
-			concept: "Une traduction physique de la poétique, par la lumière, l'espace et la matière.",
+			concept: 'Un seul concept, porté de la recherche à la matière.',
 			introHtml:
-				"Je suis <span class='hover-bold'>Qianyu&nbsp;He</span><span class='hover-bold'>, designer visuelle</span> qui travaille la <strong>couleur</strong> comme méthode — entre <strong>lumière</strong>, <strong>espace</strong> et <strong>image</strong>. De l'éclairage architectural aux objets portables et aux systèmes éditoriaux, ma pratique cherche la <em>scintilla</em> : l'étincelle fugace où un concept devient matière.",
+				"Je suis <span class='hover-bold'>Qianyu&nbsp;He</span><span class='hover-bold'>, designer et artiste</span>. Je travaille par <strong>cohérence conceptuelle</strong> : une même idée gouverne tout le processus, portée de la recherche culturelle et du <strong>récit</strong> jusqu'à la forme visuelle et l'<em>installation</em>. Mon registre — graphisme, espace, objet, son, image, <strong>écriture</strong> — n'est pas un éparpillement de compétences mais une seule méthode qui tient ensemble plusieurs médias.",
 			cvEducation: [
 				'2025— · EBABX, Bordeaux — Design : graphique & édition, espace, scénographie & objet',
 				'2017–21 · Académie des Beaux-Arts de Chine (CAA), Hangzhou — Licence, Design de couleur (design synthétique)',
@@ -202,38 +203,39 @@ export const dict: Record<Lang, Dict> = {
 			],
 			cvSkills: [
 				'Communication visuelle · Récit · Cohérence conceptuelle · Production cross-média',
-				'IA générative — image, son, code créatif (vibe coding) · veille & expérimentation',
+				'Couleur & cognition · Installation lumineuse & sensorielle · Design éditorial & narratif',
+				'IA générative — image, son, code créatif (vibe coding), explorée comme recherche',
 			],
 			cvMeta: ['Basée à Bordeaux, FR', 'Ouverte aux stages & freelance', 'ZH · FR · EN · JP · KO'],
-			practiceLabel: 'Pratique | Ce que je fais',
+			practiceLabel: 'Pratique | Méthode & registre',
 			practiceIntroHtml:
-				'Je conçois avec la <strong>couleur</strong> comme méthode — entre imprimé, lumière, objet et espace. Chaque domaine ci-dessous est une longueur d’onde d’un même spectre.',
+				"Chaque projet part d'un <strong>concept</strong> et se déploie de bout en bout. Les domaines ci-dessous ne sont pas des compétences séparées mais une même <strong>méthode</strong> — unité narrative et conceptuelle — déclinée en plusieurs médias.",
 			domains: [
 				{
 					title: 'Graphisme & Image',
 					blurb:
-						'Systèmes éditoriaux, typographie et photographie — la couleur comme signature, l’imprimé comme lieu de mémoire.',
+						'Systèmes éditoriaux et d’image où le récit fixe les règles — typographie, couleur et photographie comme porteurs de mémoire et de sens.',
 					cats: ['GRA', 'PHO'],
 					lens: 'GRA',
 				},
 				{
 					title: 'Installation & Objet',
 					blurb:
-						'Lumière, couleur et matière en dialogue — installations interactives et objets qui sondent la perception sensorielle.',
+						'Le concept rendu physique — lumière, couleur et matière mises en scène en installations et objets qui agissent sur la perception et la cognition.',
 					cats: ['INS', 'PRD'],
 					lens: 'INS',
 				},
 				{
 					title: 'Scénographie & Univers',
 					blurb:
-						'Espaces narratifs et univers spéculatifs — de la scénographie de tendances à la construction de mondes.',
+						'Espaces narratifs et mondes construits — scénographie, worldbuilding et écriture comme une seule pratique spéculative.',
 					cats: ['SCE'],
 					lens: 'SCE',
 				},
 			],
 			galleryLabel: 'Univers personnel',
-			galleryText: 'Audio, peinture, photographie, écriture, partages musicaux.',
-			galleryCta: 'ENTRER DANS LA GALERIE ↗',
+			galleryText: 'Un univers personnel — image, son, écriture et worldbuilding, réunis en une seule sensibilité.',
+			galleryCta: "ENTRER DANS L'UNIVERS ↗",
 		},
 		project: {
 			pageTitle: 'Projets — Scintilla',
@@ -266,7 +268,7 @@ export const dict: Record<Lang, Dict> = {
 			email: 'felicettec341a@gmail.com',
 			blurbHtml:
 				'Bordeaux, France.<br />Disponible pour stages, missions freelance et collaborations.',
-			role: 'Designer pluridisciplinaire — couleur, lumière & récit',
+			role: 'Designer & artiste — un concept, de la recherche à la matière',
 			location: 'Bordeaux, France',
 			cvButton: 'Télécharger le CV',
 		},
