@@ -7,7 +7,7 @@
 // 白底適配：原作亮色靠「深底發光」；此處對三片矩形用 mix-blend-mode: multiply，
 // 讓桃紅／天藍／暖黃在白紙上做「減色混合」（像水彩／油墨暈染）——白處保持純白，
 // 交疊處自然加深為乾淨的二次色（桃紅×藍=紫、桃紅×黃=橘、藍×黃=綠）。
-// 顏色取站點世界觀：品牌桃紅 #ff0048 + 一冷(天藍) + 一暖(琥珀)。
+// 顏色：桃紅 #ff0048、青 #00aeef、黃 #ffd400；subtle 濃度（低不透明度）。
 // 底緣以遮罩漸隱入白，滾動離開自然。
 ---
 
@@ -21,18 +21,18 @@
 	<defs>
 		<radialGradient id="aether-a" cx="50%" cy="50%" fx="10%" fy="50%" r=".5">
 			<animate attributeName="fx" dur="34s" values="0%;10%;0%" repeatCount="indefinite" />
-			<stop offset="0%" stop-color="#ff0048" stop-opacity="0.42" />
+			<stop offset="0%" stop-color="#ff0048" stop-opacity="0.29" />
 			<stop offset="100%" stop-color="#ff0048" stop-opacity="0" />
 		</radialGradient>
 		<radialGradient id="aether-b" cx="50%" cy="50%" fx="10%" fy="50%" r=".5">
 			<animate attributeName="fx" dur="23.5s" values="0%;10%;0%" repeatCount="indefinite" />
-			<stop offset="0%" stop-color="#00aeef" stop-opacity="0.4" />
+			<stop offset="0%" stop-color="#00aeef" stop-opacity="0.27" />
 			<stop offset="100%" stop-color="#00aeef" stop-opacity="0" />
 		</radialGradient>
 		<radialGradient id="aether-c" cx="50%" cy="50%" fx="50%" fy="50%" r=".5">
 			<animate attributeName="fx" dur="21.5s" values="0%;10%;0%" repeatCount="indefinite" />
-			<stop offset="0%" stop-color="#ffbe0b" stop-opacity="0.46" />
-			<stop offset="100%" stop-color="#ffbe0b" stop-opacity="0" />
+			<stop offset="0%" stop-color="#ffd400" stop-opacity="0.31" />
+			<stop offset="100%" stop-color="#ffd400" stop-opacity="0" />
 		</radialGradient>
 	</defs>
 	<rect x="0" y="0" width="100%" height="100%" fill="url(#aether-a)">
