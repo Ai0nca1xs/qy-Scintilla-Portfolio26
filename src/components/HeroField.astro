@@ -31,8 +31,8 @@
 </style>
 
 <script>
-	// 熱譜（低透明度薄釉）：靛 → 紫 → 桃紅（主題）→ 焰橙 → 琥珀 → 黃。
-	// 每色間插入透明檔位，讓波簾透氣、露出白底
+	// 熱譜＋冷色收尾（低透明度薄釉）：靛 → 紫 → 桃紅（主題）→ 焰橙 → 琥珀 → 黃 → 青 → 淡藍。
+	// 暖冷相接讓色環出現「升溫—冷卻」的循環；每色間插入透明檔位，露出白底
 	const CURTAIN_COLORS = [
 		'rgba(59, 10, 142, 0.1)', // 靛
 		'rgba(131, 56, 236, 0.13)', // 紫
@@ -40,6 +40,8 @@
 		'rgba(251, 86, 7, 0.12)', // 焰橙
 		'rgba(255, 190, 11, 0.14)', // 琥珀
 		'rgba(255, 212, 0, 0.12)', // 黃
+		'rgba(0, 174, 239, 0.12)', // 青
+		'rgba(155, 205, 255, 0.13)', // 淡藍
 	];
 	const CLEAR = 'rgba(255, 255, 255, 0)';
 
@@ -63,8 +65,8 @@
 		resize();
 		window.addEventListener('resize', resize);
 
-		// 原作 30 欄 / 1000px；此處取 30 欄，欄寬隨視口伸縮
-		const COLS = 30;
+		// 原作 30 欄 / 1000px；此處取 40 欄（更密的簾），欄寬隨視口伸縮
+		const COLS = 40;
 		const REPS = 2; // conic 色環重複次數（原作 repeating-conic 的「repeating」）
 		const supportsConic = typeof ctx.createConicGradient === 'function';
 
@@ -100,14 +102,14 @@
 			const amp = h * 0.22; // 波幅：漸層中心的垂直擺程
 			const cy = h * 0.48;
 			for (let i = 0; i < COLS; i++) {
-				// 原作核心：sin(frameCount·0.02 − id·φ) 的相位波（速度減半 → 0.28 rad/s）
-				const wave = Math.sin(t * 0.28 - i * 0.55);
+				// 原作核心：sin(frameCount·0.02 − id·φ) 的相位波（再放慢 → 0.2 rad/s）
+				const wave = Math.sin(t * 0.2 - i * 0.55);
 				const gy = cy + amp * wave;
 				const gx = (i + 0.5) * stepX;
 				let grad: CanvasGradient;
 				if (supportsConic) {
-					// 起始角亦隨波微轉（原作 startAngle = gradientY·0.01）
-					grad = ctx.createConicGradient(wave * 0.9, gx, gy);
+					// 起始角亦隨波微轉（幅度減半，旋轉更緩）
+					grad = ctx.createConicGradient(wave * 0.45, gx, gy);
 				} else {
 					// 舊瀏覽器退化：以波動中心為界的縱向線性漸層
 					grad = ctx.createLinearGradient(gx, gy - h * 0.6, gx, gy + h * 0.6);
