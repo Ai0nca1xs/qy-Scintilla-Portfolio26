@@ -31,19 +31,17 @@
 </style>
 
 <script>
-	// 熱譜＋冷色收尾（低透明度薄釉）：靛 → 紫 → 桃紅（主題）→ 焰橙 → 琥珀 → 黃 → 青 → 淡藍。
-	// 暖冷相接讓色環出現「升溫—冷卻」的循環；每色間插入透明檔位，露出白底
+	// 色環：仿原作 Sprague 的「少量實色寬楔」結構（5–6 色、不重複、無透明間隙），
+	// 顏色換成站點熱譜＋冷色，全部低透明度（薄釉——她的本地化決定）。
+	// 暖冷相接：桃紅 → 焰橙 → 黃 → 青 → 淡藍 → 紫
 	const CURTAIN_COLORS = [
-		'rgba(59, 10, 142, 0.1)', // 靛
-		'rgba(131, 56, 236, 0.13)', // 紫
-		'rgba(255, 0, 72, 0.15)', // 桃紅（主題色）
-		'rgba(251, 86, 7, 0.12)', // 焰橙
-		'rgba(255, 190, 11, 0.14)', // 琥珀
-		'rgba(255, 212, 0, 0.12)', // 黃
-		'rgba(0, 174, 239, 0.12)', // 青
-		'rgba(155, 205, 255, 0.13)', // 淡藍
+		'rgba(255, 0, 72, 0.16)', // 桃紅（主題色）
+		'rgba(251, 86, 7, 0.13)', // 焰橙
+		'rgba(255, 212, 0, 0.14)', // 黃
+		'rgba(0, 174, 239, 0.13)', // 青
+		'rgba(155, 205, 255, 0.15)', // 淡藍
+		'rgba(131, 56, 236, 0.12)', // 紫
 	];
-	const CLEAR = 'rgba(255, 255, 255, 0)';
 
 	function initHeroField() {
 		const canvas = document.querySelector('[data-hero-field]');
@@ -65,20 +63,16 @@
 		resize();
 		window.addEventListener('resize', resize);
 
-		// 原作 30 欄 / 1000px；此處取 40 欄（更密的簾），欄寬隨視口伸縮
+		// 原作 30 欄 / 1000px；此處取 40 欄（她的密度選擇），欄寬隨視口伸縮
 		const COLS = 40;
-		const REPS = 2; // conic 色環重複次數（原作 repeating-conic 的「repeating」）
 		const supportsConic = typeof ctx.createConicGradient === 'function';
 
-		// 把色列（含透明間隔）鋪滿一圈 / 一段線性漸層
+		// 忠實原作 setGradientColorStops 的均勻檔位：stop_i = i/n + 1/(2n)
+		// （首尾各留半格平色楔，即原作色輪的自然收邊；不加透明間隔、不重複）
 		const addStops = (grad: CanvasGradient) => {
-			const seq: string[] = [];
-			for (let r = 0; r < REPS; r++) {
-				for (const c of CURTAIN_COLORS) seq.push(c, CLEAR);
-			}
-			seq.push(seq[0]); // 首尾同色，環縫無接痕
-			for (let i = 0; i < seq.length; i++) {
-				grad.addColorStop(i / (seq.length - 1), seq[i]);
+			const n = CURTAIN_COLORS.length;
+			for (let i = 0; i < n; i++) {
+				grad.addColorStop(i / n + 1 / (2 * n), CURTAIN_COLORS[i]);
 			}
 		};
 
@@ -99,17 +93,19 @@
 			ctx.clearRect(0, 0, w, h);
 
 			const stepX = w / COLS;
-			const amp = h * 0.22; // 波幅：漸層中心的垂直擺程
+			const amp = h * 0.25; // 波幅：漸層中心的垂直擺程（原作 baseH = height/4）
 			const cy = h * 0.48;
 			for (let i = 0; i < COLS; i++) {
-				// 原作核心：sin(frameCount·0.02 − id·φ) 的相位波（再放慢 → 0.2 rad/s）
-				const wave = Math.sin(t * 0.2 - i * 0.55);
+				// 原作核心：sin(frameCount·0.02 − id·0.1)——欄間相位僅差 0.1，
+				// 整幅簾是一個緩慢的大湧浪（速度按她的偏好放慢至 0.2 rad/s）
+				const wave = Math.sin(t * 0.2 - i * 0.1);
 				const gy = cy + amp * wave;
 				const gx = (i + 0.5) * stepX;
 				let grad: CanvasGradient;
 				if (supportsConic) {
-					// 起始角亦隨波微轉（幅度減半，旋轉更緩）
-					grad = ctx.createConicGradient(wave * 0.45, gx, gy);
+					// 原作 startAngle = gradientY·0.01：±height/4 px → ±2.5 rad，
+					// 色輪隨波大幅迴轉——這是原作「旋轉感」的來源（解析度無關化：2.5·wave）
+					grad = ctx.createConicGradient(wave * 2.5, gx, gy);
 				} else {
 					// 舊瀏覽器退化：以波動中心為界的縱向線性漸層
 					grad = ctx.createLinearGradient(gx, gy - h * 0.6, gx, gy + h * 0.6);
