@@ -141,6 +141,7 @@ if (detailImages.length > 0) {
 			{d.status === 'in-progress' && ` · ${t.project.statusInProgress}`}
 		</p>
 		<h1 class="title-calx detail-title">{d.title}</h1>
+		<span class="detail-swatch" data-cat={d.category} aria-hidden="true"></span>
 	</header>
 
 	{coverImg && <Image src={coverImg} alt={d.title} class="detail-cover" width={1800} />}
@@ -217,15 +218,36 @@ if (detailImages.length > 0) {
 		letter-spacing: 0.02em;
 	}
 
-	/* 標題：wireframe 樣板（cargo 3395987）的大級數——版面唯一的重音 */
 	.detail-title {
-		font-size: clamp(2.6rem, 6vw, 4.5rem);
+		font-size: clamp(2.25rem, 5vw, 3.75rem);
 		font-weight: 700;
 		letter-spacing: -0.02em;
-		line-height: 1.02;
 	}
 
-	/* 關鍵詞：wireframe 化——去色底，髮絲框 + 靜默灰，游標懸停才升溫 */
+	/* 分類色籤：標題下方的一段純色 */
+	.detail-swatch {
+		display: block;
+		width: 56px;
+		height: 6px;
+		margin-top: 1rem;
+	}
+	.detail-swatch[data-cat='GRA'] {
+		background: var(--cat-gra);
+	}
+	.detail-swatch[data-cat='SCE'] {
+		background: var(--cat-sce);
+	}
+	.detail-swatch[data-cat='INS'] {
+		background: var(--cat-ins);
+	}
+	.detail-swatch[data-cat='PRD'] {
+		background: var(--cat-prd);
+	}
+	.detail-swatch[data-cat='PHO'] {
+		background: var(--cat-pho);
+	}
+
+	/* 關鍵詞：分類色實底標籤片 */
 	.tag-chips {
 		display: flex;
 		flex-wrap: wrap;
@@ -233,15 +255,24 @@ if (detailImages.length > 0) {
 	}
 
 	.detail-tag {
-		padding: 3px 9px;
-		border: 1px solid var(--color-line);
-		color: var(--text-secondary);
-		transition: color 0.3s ease, border-color 0.3s ease;
+		padding: 4px 9px;
+		color: #f8f9fa;
 	}
-
-	.detail-tag:hover {
-		color: var(--color-accent);
-		border-color: var(--color-accent);
+	.detail-tag[data-cat='GRA'] {
+		background: var(--cat-gra);
+	}
+	.detail-tag[data-cat='SCE'] {
+		background: var(--cat-sce);
+	}
+	.detail-tag[data-cat='INS'] {
+		background: var(--cat-ins);
+	}
+	.detail-tag[data-cat='PRD'] {
+		background: var(--cat-prd);
+		color: #1a1a1a;
+	}
+	.detail-tag[data-cat='PHO'] {
+		background: var(--cat-pho);
 	}
 
 	.detail-cover {
@@ -304,15 +335,21 @@ if (detailImages.length > 0) {
 		will-change: filter, transform, opacity;
 	}
 
-	/* 佔位：wireframe 中性灰（深淺依 --mix 輪換）＋ 髮絲框——
-	   分類色自圖版退役，色彩全部讓給作品圖片本身 */
-	.plate {
-		background: color-mix(in srgb, #1a1a1a calc(var(--mix) * 0.28), #ffffff);
-		border: 1px solid var(--color-line);
+	/* 佔位淡染：分類色 × 白，深淺依 --mix 輪換 */
+	.plates[data-cat='GRA'] .plate {
+		background: color-mix(in srgb, var(--cat-gra) var(--mix), #ffffff);
 	}
-
-	.plate.has-img {
-		border: none;
+	.plates[data-cat='SCE'] .plate {
+		background: color-mix(in srgb, var(--cat-sce) var(--mix), #ffffff);
+	}
+	.plates[data-cat='INS'] .plate {
+		background: color-mix(in srgb, var(--cat-ins) var(--mix), #ffffff);
+	}
+	.plates[data-cat='PRD'] .plate {
+		background: color-mix(in srgb, var(--cat-prd) var(--mix), #ffffff);
+	}
+	.plates[data-cat='PHO'] .plate {
+		background: color-mix(in srgb, var(--cat-pho) var(--mix), #ffffff);
 	}
 
 	/* 圖注：Roboto Mono Italic 微型字級（程式碼註解式的技術感） */

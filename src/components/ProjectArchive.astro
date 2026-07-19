@@ -1,10 +1,8 @@
 ---
-// 檔案庫頁主體（cargo 3290656「書籍目錄」語法）：
-// 三大領域作「部」（I / II / III 羅馬數字 + 巨型標題），
-// 作品作「章」——編號全書連續，行末以點狀引導線接右對齊的年份（如目錄頁碼）。
-// ?lens=GRA 等預篩選鏈接改為滾動至對應「部」的錨點。EN / FR 共用。
+// 檔案庫頁主體：分類篩選 + 標本卡網格，EN / FR 共用
 import { getCollection } from 'astro:content';
-import { localizePath, useTranslations, type Lang } from '@/i18n/utils';
+import ProjectCard from '@/components/ProjectCard.astro';
+import { useTranslations, type Lang } from '@/i18n/utils';
 
 interface Props {
 	lang: Lang;
@@ -15,7 +13,8 @@ const t = useTranslations(lang);
 
 const localePrefix = lang === 'FR' ? 'fr/' : 'en/';
 
-// 年份排序：字符串年份（支持 '2019–2024'、'2026–27' 跨度）取結束年，同年按 order
+// 預設排序：按年份從新到舊。年份是字符串（支持 '2019–2024'、'2026–27' 跨度），
+// 取跨度的結束年比較；同年再按 order。
 const endYear = (year: string) => {
 	const full = year.match(/\d{4}/g);
 	if (!full) return 0;
@@ -29,161 +28,111 @@ const entries = (await getCollection('projects', ({ id }) => id.startsWith(local
 	(a, b) => endYear(b.data.year) - endYear(a.data.year) || a.data.order - b.data.order
 );
 
-const slugOf = (id: string) => id.replace(/^(en|fr)\//, '');
-const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
-
-// 以首頁的三大領域分「部」；行號全書連續（目錄的章序邏輯）
-const parts = t.home.domains.map((domain, i) => ({
-	roman: ROMAN[i],
-	title: domain.title,
-	lens: domain.lens,
-	blurb: domain.blurb,
-	items: entries.filter((e) => (domain.cats as readonly string[]).includes(e.data.category)),
-}));
-let rowNo = 0;
+const categories = ['GRA', 'SCE', 'INS', 'PRD', 'PHO'] as const;
 ---
 
 <header class="page-header">
 	<h1 class="title-calx">{t.project.heading}</h1>
-	<p class="metadata">Index · {entries.length} works · sort by year ↓</p>
+	<p class="metadata">
+		Sort by: year ↓ | Filter: <span data-filter-label>{t.project.filterAll}</span>
+	</p>
 </header>
 
-<section class="toc" data-project-toc>
+<nav class="filter-bar" aria-label="Category filter">
+	<button class="filter-btn metadata active" data-filter="ALL">{t.project.filterAll}</button>
 	{
-		parts.map((part) => (
-			<div class="toc-part" id={`part-${part.lens}`}>
-				<h2 class="part-title">
-					<span class="part-roman">{part.roman}</span>
-					{part.title}
-				</h2>
-				<p class="part-blurb">{part.blurb}</p>
-				<ol class="toc-list">
-					{part.items.map((entry) => {
-						rowNo += 1;
-						return (
-							<li>
-								<a
-									href={localizePath(lang, `/project/${slugOf(entry.id)}`)}
-									class="toc-row"
-									style={`--dev-i: ${rowNo}`}
-									data-cursor-label="VIEW"
-								>
-									<span class="caption-mono toc-no">{String(rowNo).padStart(2, '0')}</span>
-									<span class="toc-title">
-										{entry.data.title}
-										{entry.data.status === 'in-progress' && (
-											<em class="caption-mono toc-status">{t.project.statusInProgress}</em>
-										)}
-									</span>
-									<span class="toc-leader" aria-hidden="true" />
-									<span class="metadata toc-year">{entry.data.year}</span>
-								</a>
-							</li>
-						);
-					})}
-				</ol>
-			</div>
+		categories.map((cat) => (
+			<button class="filter-btn metadata" data-filter={cat}>
+				<span class="filter-dot" data-cat={cat} aria-hidden="true" />
+				{t.categoriesShort[cat]}
+			</button>
 		))
 	}
+</nav>
+
+<section class="plate-stack" data-project-grid>
+	{entries.map((entry) => <ProjectCard entry={entry} lang={lang} />)}
 </section>
 
 <style>
-	.toc {
+	.filter-bar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.8rem;
+		margin-bottom: var(--space-lg);
+	}
+
+	/* 無框膠囊：淡染實底替代描邊。
+	   標籤只留具體文字（去分類縮寫），首字母大寫、字距收緊 */
+	.filter-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		height: var(--btn-height); /* 全站按鈕統一高度 */
+		background: rgba(26, 26, 26, 0.05);
+		border: none;
+		padding: 8px 16px;
+		cursor: pointer;
+		opacity: 0.7;
+		text-transform: none;
+		letter-spacing: 0.02em;
+		transition: all 0.4s var(--ease-oxide);
+	}
+
+	.filter-btn:hover {
+		opacity: 1;
+		color: var(--color-accent);
+		background: rgba(26, 26, 26, 0.08);
+	}
+
+	/* 選中態：墨黑實底反白，強對比 */
+	.filter-btn.active {
+		opacity: 1;
+		background: var(--color-ink);
+		color: #f8f9fa;
+	}
+
+	/* 分類色點 */
+	.filter-dot {
+		width: 8px;
+		height: 8px;
+		flex-shrink: 0;
+	}
+	.filter-dot[data-cat='GRA'] {
+		background: var(--cat-gra);
+	}
+	.filter-dot[data-cat='SCE'] {
+		background: var(--cat-sce);
+	}
+	.filter-dot[data-cat='INS'] {
+		background: var(--cat-ins);
+	}
+	.filter-dot[data-cat='PRD'] {
+		background: var(--cat-prd);
+	}
+	.filter-dot[data-cat='PHO'] {
+		background: var(--cat-pho);
+	}
+
+	/* 大圖板縱向堆疊，窄間隙 */
+	.plate-stack {
 		display: flex;
 		flex-direction: column;
-		gap: calc(var(--space-lg) * 1.4);
-		margin-bottom: var(--space-xl);
+		gap: clamp(0.8rem, 1.5vw, 1.5rem);
 	}
 
-	/* 「部」標題：目錄裡的巨型羅馬數字 + 領域名（cargo 3290656 的 7rem 級數） */
-	.part-title {
-		display: flex;
-		align-items: baseline;
-		gap: 1.4rem;
-		font-size: clamp(1.9rem, 5.2vw, 4.2rem);
-		letter-spacing: -0.02em;
-		line-height: 1.05;
-		margin-bottom: 0.6rem;
+	/* 篩選切換：板以「沉澱/顯影」的方式離場入場 */
+	.plate-stack :global(.is-hidden) {
+		display: none;
 	}
 
-	.part-roman {
-		font-weight: 400;
-		font-size: 0.62em;
-		color: var(--color-accent);
+	.plate-stack :global([data-category]) {
+		animation: card-develop 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+		/* 級差顯影：可見卡片依序遲滯（--dev-i 由腳本按可見順位賦值），如相紙逐張顯影 */
+		animation-delay: calc(var(--dev-i, 0) * 70ms);
 	}
 
-	.part-blurb {
-		color: var(--text-secondary);
-		max-width: 480px;
-		margin-bottom: 1.6rem;
-	}
-
-	.toc-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	/* 章行：編號 · 標題 ····· 年份（頁碼位）；髮絲線分隔 */
-	.toc-row {
-		display: flex;
-		align-items: baseline;
-		gap: 1rem;
-		padding: 0.85rem 0;
-		border-top: 1px solid var(--color-line);
-		animation: row-develop 0.6s var(--ease-develop) backwards;
-		animation-delay: calc(var(--dev-i, 0) * 60ms);
-	}
-
-	.toc-list li:last-child .toc-row {
-		border-bottom: 1px solid var(--color-line);
-	}
-
-	.toc-no {
-		font-style: normal;
-		min-width: 2.2em;
-		opacity: 0.7;
-	}
-
-	.toc-title {
-		font-family: var(--font-title);
-		font-size: clamp(16px, 2vw, 20px);
-		font-weight: 500;
-		letter-spacing: -0.01em;
-		transition: transform 0.45s var(--ease-spring);
-	}
-
-	.toc-status {
-		margin-left: 0.8em;
-		color: var(--color-accent);
-	}
-
-	/* 點狀引導線：目錄「標題→頁碼」的視覺韻腳 */
-	.toc-leader {
-		flex: 1;
-		border-bottom: 1px dotted rgba(26, 26, 26, 0.3);
-		transform: translateY(-0.28em);
-	}
-
-	.toc-year {
-		opacity: 0.8;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.toc-row:hover {
-		opacity: 1;
-	}
-
-	.toc-row:hover .toc-title {
-		transform: translateX(0.5rem);
-		color: var(--color-accent);
-	}
-
-	.toc-row:hover .toc-leader {
-		border-color: var(--color-accent);
-	}
-
-	@keyframes row-develop {
+	@keyframes card-develop {
 		from {
 			opacity: 0;
 			filter: blur(4px);
@@ -197,34 +146,56 @@ let rowNo = 0;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.toc-row {
+		.plate-stack :global([data-category]) {
 			animation: none;
-		}
-	}
-
-	@media (max-width: 720px) {
-		.toc-leader {
-			display: none;
-		}
-
-		.toc-row {
-			flex-wrap: wrap;
-			gap: 0.4rem 1rem;
-		}
-
-		.toc-year {
-			margin-left: auto;
 		}
 	}
 </style>
 
 <script>
-	// ?lens=GRA 等舊篩選鏈接 → 滾動至對應「部」
-	function initTocLens() {
+	// 分類篩選。astro:page-load 兼容首次載入與轉場後的重新綁定。
+	// 支持 ?lens=GRA 這類預篩選鏈接（首頁領域跳轉 / 求職投遞專用視角）。
+	function initProjectFilters() {
+		const grid = document.querySelector<HTMLElement>('[data-project-grid]');
+		if (!grid) return;
+
+		const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.filter-btn'));
+		const label = document.querySelector('[data-filter-label]');
+		const cards = Array.from(grid.querySelectorAll<HTMLElement>('[data-category]'));
+
+		const applyFilter = (btn: HTMLButtonElement) => {
+			const filter = btn.dataset.filter ?? 'ALL';
+			buttons.forEach((b) => b.classList.toggle('active', b === btn));
+			if (label) label.textContent = (btn.textContent ?? '').trim();
+
+			let visibleIndex = 0;
+			cards.forEach((card) => {
+				const show = filter === 'ALL' || card.dataset.category === filter;
+				card.classList.toggle('is-hidden', !show);
+				if (show) {
+					// 依可見順位賦級差，再重觸發顯影動畫——「重新校準光譜」逐張顯影
+					card.style.setProperty('--dev-i', String(visibleIndex++));
+					card.style.animation = 'none';
+					void card.offsetWidth;
+					card.style.animation = '';
+				}
+			});
+		};
+
+		buttons.forEach((btn) => {
+			btn.addEventListener('click', () => applyFilter(btn));
+		});
+
+		// 首次載入：給全部卡片賦級差順位（無 lens 時 applyFilter 不會跑）
+		cards.forEach((card, i) => card.style.setProperty('--dev-i', String(i)));
+
+		// URL 帶 lens 參數時，載入即校準到對應分類
 		const lens = new URLSearchParams(window.location.search).get('lens')?.toUpperCase();
-		if (!lens) return;
-		const target = document.getElementById(`part-${lens}`);
-		target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		if (lens) {
+			const target = buttons.find((b) => b.dataset.filter === lens);
+			if (target) applyFilter(target);
+		}
 	}
-	document.addEventListener('astro:page-load', initTocLens);
+
+	document.addEventListener('astro:page-load', initProjectFilters);
 </script>

@@ -41,7 +41,7 @@ const projectsFor = (cats: readonly string[]) =>
 </section>
 
 <section class="intro-section">
-	<span class="section-label sec-index"><b class="sec-no">01</b><i class="sec-name">Profile</i></span>
+	<span class="section-label">01 / Profile</span>
 	<div class="intro-grid">
 		<p class="lead-text" data-text-motion set:html={t.home.introHtml} />
 		<div class="cv-panel" data-settle>
@@ -65,8 +65,7 @@ const projectsFor = (cats: readonly string[]) =>
 </section>
 
 <section class="practice-section">
-	<hr class="sec-rule" aria-hidden="true" />
-	<span class="section-label sec-index"><b class="sec-no">02</b><i class="sec-name">{t.home.practiceLabel}</i></span>
+	<span class="section-label">02 / {t.home.practiceLabel}</span>
 	<div class="practice-grid">
 		{/* 左列：緊湊的定位說明 */}
 		<div class="practice-intro">
@@ -114,8 +113,7 @@ const projectsFor = (cats: readonly string[]) =>
 </section>
 
 <section class="gallery-section">
-	<hr class="sec-rule" aria-hidden="true" />
-	<span class="section-label sec-index"><b class="sec-no">03</b><i class="sec-name">{t.home.galleryLabel}</i></span>
+	<span class="section-label">03 / {t.home.galleryLabel}</span>
 	<p class="gallery-text" data-type-shuffle data-settle>{t.home.galleryText}</p>
 	<a
 		href={localizePath(lang, '/gallery')}
@@ -203,40 +201,6 @@ const projectsFor = (cats: readonly string[]) =>
 		margin-bottom: var(--space-xl);
 	}
 
-	/* 編號索引語法（cargo 3308439）：巨型數字編號 + 小型斜體名——
-	   數字是內容而非標籤；區塊之間以全寬髮絲線分隔 */
-	.sec-index {
-		display: flex;
-		align-items: baseline;
-		gap: 1.2rem;
-		opacity: 1;
-	}
-
-	.sec-no {
-		font-family: var(--font-title);
-		font-size: clamp(2.6rem, 6vw, 4.5rem);
-		font-weight: 700;
-		line-height: 1;
-		letter-spacing: -0.03em;
-		color: var(--color-ink);
-	}
-
-	.sec-name {
-		font-family: var(--font-primary);
-		font-style: italic;
-		font-weight: 400;
-		font-size: 14px;
-		letter-spacing: 0.04em;
-		color: var(--text-secondary);
-		text-transform: none;
-	}
-
-	.sec-rule {
-		border: 0;
-		border-top: 1px solid var(--color-line);
-		margin: 0 0 var(--space-lg);
-	}
-
 	.intro-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
@@ -244,21 +208,15 @@ const projectsFor = (cats: readonly string[]) =>
 		align-items: start;
 	}
 
-	/* 自述：大級數編輯體流文（cargo 3308439 的行文尺度）*/
+	/* 自述：Helvetica Neue Light，正常字距（修正 Roboto Mono 造成的字距過大）*/
 	.lead-text {
 		font-family: var(--font-primary);
-		font-size: clamp(1.35rem, 2.6vw, 2rem);
-		line-height: 1.5;
-		letter-spacing: -0.005em;
-		font-weight: 400;
+		font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+		line-height: 1.55;
+		letter-spacing: 0;
+		font-weight: 300;
 		margin: 0;
-		max-width: 640px;
-	}
-
-	/* 關鍵詞熒光筆：樣板的黃色 highlight 手勢，取站點淡黃薄釉 */
-	.lead-text :global(strong) {
-		font-weight: 500;
-		background: linear-gradient(transparent 18%, rgba(255, 212, 0, 0.32) 18% 88%, transparent 88%);
+		max-width: 560px;
 	}
 
 	.cv-panel {
@@ -331,13 +289,13 @@ const projectsFor = (cats: readonly string[]) =>
 		padding-top: 0;
 	}
 
-	/* 領域標題：h2 級數（樣板的大字行文），懸浮微位移 */
+	/* 領域標題：字號縮小、無色塊，懸浮微位移 */
 	.domain-title {
 		position: sticky;
 		top: 90px;
-		font-size: clamp(20px, 2.6vw, 27px);
+		font-size: 18px;
 		font-weight: 700;
-		letter-spacing: -0.01em;
+		letter-spacing: 0;
 		margin: 0;
 		transition: transform 0.4s var(--ease-develop);
 	}

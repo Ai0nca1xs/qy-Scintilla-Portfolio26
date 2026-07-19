@@ -3,38 +3,6 @@
    體系：冷白實驗室基底 + 煆燒光譜點綴 + 等寬 metadata
    ============================================================ */
 
-/* 0. 自備字體：ABC Favorit（Dinamo 商業字體——字檔請放 public/fonts/，見該處 README）。
-   絕對路徑含 GitHub Pages base（/Scintilla）；缺檔時 font-display: swap 直接落到
-   Familjen Grotesk 回退，不會壞版。 */
-@font-face {
-  font-family: 'Favorit';
-  src: url('/Scintilla/fonts/Favorit-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Favorit';
-  src: url('/Scintilla/fonts/Favorit-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Favorit';
-  src: url('/Scintilla/fonts/Favorit-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Favorit';
-  src: url('/Scintilla/fonts/Favorit-RegularItalic.woff2') format('woff2');
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-
 /* 1. 設計變數 (Design Tokens) */
 :root {
   /* 色彩系統 (Scintilla Color System) */
@@ -111,11 +79,8 @@
   /* 字體分工（瑞士/粗野主義雙聲部）：
      Roboto Mono = 標題（Bold 全大寫，幾何壓制力）+ 小標籤/數據（Regular/Medium 首字母大寫）+ 圖注（Italic）；
      Helvetica Neue = 內文（Light）+ 引言（Italic）。字重跳躍對比：700 ↔ 300，不取中間值 */
-  /* 主文字 Favorit（樣板 abc-favorit.cargo.site 的整站用法）：
-     字檔由 Qianyu 自備（public/fonts/，商業授權），缺檔時回退 Familjen Grotesk（免費近親）。
-     Roboto Mono 保留給 metadata / 圖注——對應樣板站 Favorit + Diatype Mono 的配法 */
-  --font-title: 'Favorit', 'Familjen Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-primary: 'Favorit', 'Familjen Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-title: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-primary: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-mono: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* 運動曲線 */
