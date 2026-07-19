@@ -111,8 +111,25 @@ const L = fr
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
 			rel="stylesheet"
-			href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"
+			href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400;0,500;0,700;1,400&family=Roboto+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap"
 		/>
+		<style is:inline>
+			/* Favorit 自備字檔（見 public/fonts/README.md）；缺檔時回退 Familjen Grotesk */
+			@font-face {
+				font-family: 'Favorit';
+				src: url('/Scintilla/fonts/Favorit-Regular.woff2') format('woff2');
+				font-weight: 400;
+				font-style: normal;
+				font-display: swap;
+			}
+			@font-face {
+				font-family: 'Favorit';
+				src: url('/Scintilla/fonts/Favorit-Bold.woff2') format('woff2');
+				font-weight: 700;
+				font-style: normal;
+				font-display: swap;
+			}
+		</style>
 	</head>
 	<body>
 		{/* 屏顯工具條（打印時隱藏） */}
@@ -123,7 +140,6 @@ const L = fr
 
 		{/* —— 1. 封面 —— */}
 		<section class="sheet cover">
-			<div class="cover-orb" aria-hidden="true"></div>
 			<span class="folio-label">SCINTILLA — {L.portfolio} {year}</span>
 			<h1 class="cover-title">SCINTILLA<span class="accent">.</span></h1>
 			<p class="cover-sub">{t.home.heroMeta}</p>
@@ -314,18 +330,20 @@ const L = fr
 		<style>
 			/* ——— 基礎：A4 橫向書頁 ——— */
 			:root {
-				--accent: #ff0048;
+				/* 低調版主題色（cargo K393/U247 的整潔編輯風）：正紅只作細節重音 */
+				--accent: #ec2f28;
 				--ink: #1a1a1a;
 				--ink-2: rgba(26, 26, 26, 0.7);
 				--ink-3: rgba(26, 26, 26, 0.45);
+				--hair: rgba(26, 26, 26, 0.16);
 				--mono: 'Roboto Mono', ui-monospace, monospace;
-				--sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-				/* 站點分類純色（gallery 磚的 tone 引用這些變量作佔位底色） */
-				--color-magenta: #e4007c;
-				--color-orange: #ff5c00;
-				--color-blue: #1f3cff;
-				--color-yellow: #ffd500;
-				--color-slate: #5b6b7f;
+				--sans: 'Favorit', 'Familjen Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+				/* 分類色的低語版：保留色相、降到紙感淡染（gallery 磚 tone 引用） */
+				--color-magenta: #f2dde4;
+				--color-orange: #f6e6d9;
+				--color-blue: #dfe5f0;
+				--color-yellow: #f5efd6;
+				--color-slate: #e4e8ec;
 			}
 
 			* {
@@ -340,7 +358,7 @@ const L = fr
 
 			body {
 				font-family: var(--sans);
-				font-weight: 300;
+				font-weight: 400;
 				color: var(--ink);
 				background: #e6e8ea; /* 屏顯：預覽台面 */
 				-webkit-print-color-adjust: exact;
@@ -415,6 +433,8 @@ const L = fr
 				justify-content: space-between;
 				align-items: baseline;
 				margin-bottom: 10mm;
+				padding-bottom: 2.6mm;
+				border-bottom: 0.2mm solid var(--hair); /* K393/U247 的髮絲線節拍 */
 			}
 
 			.folio-label {
@@ -424,28 +444,22 @@ const L = fr
 				color: var(--ink-3);
 			}
 
-			/* ——— 封面 ——— */
+			/* ——— 封面：純文字排印 + 一道正紅細線（低調重音） ——— */
 			.cover {
 				display: flex;
 				flex-direction: column;
 				justify-content: space-between;
 			}
-			.cover-orb {
-				position: absolute;
-				right: -30mm;
-				bottom: -46mm;
-				width: 120mm;
-				height: 120mm;
-				border-radius: 50%;
-				background: radial-gradient(circle at 38% 34%, #ffaad4 0%, var(--accent) 78%);
-			}
 			.cover-title {
-				font-family: var(--mono);
+				font-family: var(--sans);
 				font-weight: 700;
 				font-size: 64pt;
-				letter-spacing: -0.02em;
+				letter-spacing: -0.03em;
 				line-height: 1;
 				margin: auto 0 0;
+				padding-top: 5mm;
+				border-top: 0.8mm solid var(--accent);
+				align-self: flex-start;
 			}
 			.accent {
 				color: var(--accent);
@@ -526,12 +540,14 @@ const L = fr
 			.toc-page {
 				text-align: right;
 			}
+			.toc li {
+				border-top: 0.2mm solid var(--hair);
+			}
 			.toc-title {
-				font-family: var(--mono);
+				font-family: var(--sans);
 				font-weight: 700;
 				font-size: 13pt;
 				letter-spacing: -0.01em;
-				text-transform: uppercase;
 			}
 			.toc-meta {
 				font-family: var(--mono);
@@ -548,25 +564,21 @@ const L = fr
 				height: calc(100% - 16mm);
 			}
 			.project-title {
-				font-family: var(--mono);
+				font-family: var(--sans);
 				font-weight: 700;
 				font-size: 24pt;
 				letter-spacing: -0.02em;
 				line-height: 1.05;
-				text-transform: uppercase;
 				margin: 0 0 3mm;
 			}
+			/* 統一的正紅細記號（K393 的 credits 風格：色彩退場，僅留一筆重音） */
 			.swatch {
 				display: block;
 				width: 14mm;
-				height: 2mm;
+				height: 0.6mm;
 				margin-bottom: 6mm;
+				background: var(--accent);
 			}
-			.project[data-cat='GRA'] .swatch { background: #ff5c00; }
-			.project[data-cat='SCE'] .swatch { background: #e4007c; }
-			.project[data-cat='INS'] .swatch { background: #1f3cff; }
-			.project[data-cat='PRD'] .swatch { background: #ffd500; }
-			.project[data-cat='PHO'] .swatch { background: #5b6b7f; }
 
 			.summary {
 				font-style: italic;
@@ -604,18 +616,15 @@ const L = fr
 				min-height: 0;
 				object-fit: cover;
 			}
+			/* 佔位一律紙感中性灰 + 髮絲框（分類色自 print 退役——整潔優先） */
 			.media-placeholder {
 				flex: 1;
 				display: flex;
 				align-items: flex-end;
 				padding: 8mm;
-				background: #f0f2f4;
+				background: #f4f3f0;
+				border: 0.2mm solid var(--hair);
 			}
-			.project[data-cat='GRA'] .media-placeholder { background: rgba(255, 92, 0, 0.16); }
-			.project[data-cat='SCE'] .media-placeholder { background: rgba(228, 0, 124, 0.14); }
-			.project[data-cat='INS'] .media-placeholder { background: rgba(31, 60, 255, 0.12); }
-			.project[data-cat='PRD'] .media-placeholder { background: rgba(255, 213, 0, 0.2); }
-			.project[data-cat='PHO'] .media-placeholder { background: rgba(91, 107, 127, 0.16); }
 			.media-placeholder span {
 				font-family: var(--mono);
 				font-size: 8pt;
@@ -713,7 +722,7 @@ const L = fr
 				align-items: flex-start;
 			}
 			.back-thanks {
-				font-family: var(--mono);
+				font-family: var(--sans);
 				font-weight: 700;
 				font-size: 40pt;
 				letter-spacing: -0.02em;
