@@ -69,7 +69,9 @@
   --space-lg: 48px;
   --space-xl: clamp(64px, 12vh, 128px);
   --container-max-width: 100%; /* 滿版畫布 */
-  --gutter: clamp(16px, 2.5vw, 40px); /* 頁邊距：移動端 16px → 桌面 40px */
+  /* 頁邊距（cargo 3381207 的骨架原則：四周一圈從容、恆定感的留白框）：
+     移動端 20px → 桌面 56px，桌面留白顯著加寬，內容不再貼邊 */
+  --gutter: clamp(20px, 3.2vw, 56px);
 
   /* 直角系統：全站不使用圓角 */
   --radius-sm: 0;
